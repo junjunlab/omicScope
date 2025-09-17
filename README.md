@@ -2,15 +2,15 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/junjunlab/omicScope/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/junjunlab/omicScope/actions/workflows/R-CMD-check.yaml) [![Codecov test coverage](https://codecov.io/gh/junjunlab/omicScope/branch/main/graph/badge.svg)](https://codecov.io/gh/junjunlab/omicScope?branch=main) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![Codecov test coverage](https://codecov.io/gh/junjunlab/omicScope/branch/main/graph/badge.svg)](https://codecov.io/gh/junjunlab/omicScope?branch=main) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 <!-- badges: end -->
 
 ## Overview
 
-**omicScope** is a comprehensive R package for one-stop RNA-seq data analysis and visualization.
-Built with the modern S4 object-oriented framework, omicScope streamlines the entire RNA-seq analysis
-workflow from mapped bam files or raw counts to biological insights.
+## Overview
+
+**omicScope** is a comprehensive R package for one-stop RNA-seq data analysis and visualization. Built on the **SummarizedExperiment** data structure and modern S4 object-oriented framework, omicScope provides a unified interface for the entire RNA-seq analysis workflow - from mapped BAM files or raw count matrices to meaningful biological insights. By leveraging the well-established Bioconductor infrastructure, omicScope ensures seamless integration with the broader ecosystem of genomic analysis tools.
 
 ## Key Features
 
@@ -21,6 +21,8 @@ workflow from mapped bam files or raw counts to biological insights.
 -   📦 **Activity Inference**: Pathway and transcription factor activity estimation using decoupleR
 -   📦 **Rich Visualizations**: Publication-ready plots including heatmaps, volcano plots, and correlation matrices
 -   📦 **S4 Object System**: Organized data management and reproducible analysis workflows
+
+> ⚠️ **Development Status**: omicScope is currently under active development. We welcome feedback, suggestions, and contributions from the community. If you have ideas for new features or improvements, please feel free to submit pull requests or open issues!
 
 ## Installation
 
@@ -39,6 +41,16 @@ if (!requireNamespace("pak", quietly = TRUE)) {
 }
 pak::pak("junjunlab/omicScope")
 ```
+
+## Contributing
+
+omicScope is an open-source project and we actively encourage community contributions! Whether you're interested in:
+
+-   💡 **Bug fixes** - Help us identify and resolve issues.
+-   💡 **New features** - Propose and implement new analytical capabilities.
+-   💡 **Documentation** - Improve examples, tutorials, or function documentation.
+-   💡 **Testing** - Add unit tests or test with your own datasets.
+-   💡 **Ideas** - Share suggestions for improvements or new directions.
 
 ## Quick Start
 
