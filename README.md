@@ -6,7 +6,6 @@
 
 <!-- badges: end -->
 
-
 ## Overview
 
 **omicScope** is a comprehensive R package for one-stop RNA-seq data analysis and visualization. Built on the **SummarizedExperiment** data structure and modern S4 object-oriented framework, omicScope provides a unified interface for the entire RNA-seq analysis workflow - from mapped BAM files or raw count matrices to meaningful biological insights. By leveraging the well-established Bioconductor infrastructure, omicScope ensures seamless integration with the broader ecosystem of genomic analysis tools.
@@ -56,7 +55,10 @@ omicScope is an open-source project and we actively encourage community contribu
 Here's a basic workflow demonstrating omicScope's capabilities:
 
 ``` r
+library(SummarizedExperiment)
 library(omicScope)
+
+
 
 # Load example data or create omicscope object from count matrix
 bams <- c("../test-bam/0a.sorted.bam","../test-bam/0b.sorted.bam",
@@ -73,55 +75,16 @@ mta <- data.frame(sample = bams,
 data("counts")
 
 # Create omicscope object
-os <- omicscope(gtfAnno = "Mus_musculus.GRCm38.102.gtf.gz",
+os <- omicscope(gtfAnno = "../test-bam/Mus_musculus.GRCm38.102.gtf.gz",
                 counts = counts,
                 metadata = mta)
-
-# 1. Data normalization
-os <- get_normalized_data(os, method = "tpm")
-
-# 2. Dimensionality reduction
-os <- run_pca(os)
-
-
-# Visualize PCA
-pca_plot(os)
-
-# 3. Differential expression analysis
-os <- run_differential_expression(os, 
-                                  method = "deseq2",
-                                  selectedSample = c("day0-rep1","day0-rep2",
-                                                     "day10-rep1","day10-rep2"),
-                                  deseq2Contrast = c('group', 'day10', 'day0')
-                                  )
-
-# Volcano plot
-volcano_plot(os, comparison = "treat_vs_control")
-
-# 4. Functional enrichment analysis
-library(org.Mm.eg.db)
-
-os <- run_enrichment(os, 
-                     enrich_type = "go",
-                     OrgDb = org.Mm.eg.db)
-
-# 5. Activity inference
-# Pathway activity
-os <- infer_activity(os, 
-                     input_type = "counts",
-                     infer_type = "pathway",
-                     organism = "mouse",
-                     use_local_netdata = TRUE)
-
-activity_plot(os)
-
-# Transcription factor activity  
-os <- infer_activity(os, 
-                     input_type = "counts",
-                     infer_type = "tf",
-                     statistics = "ulm",
-                     organism = "mouse",
-                     use_local_netdata = TRUE)
-
-activity_plot(os, target_tf = c("Pou5f1", "Sox2"))
+os
+# class: omicscope 
+# dim: 39732 6 
+# metadata(0):
+# assays(1): counts
+# rownames(39732): ENSMUSG00000102693 ENSMUSG00000051951 ... ENSMUSG00000094621 ENSMUSG00000095742
+# rowData names(3): gene_id gene_name gene_biotype
+# colnames(6): day0-rep1 day0-rep2 ... day10-rep1 day10-rep2
+# colData names(3): sample sample_name group
 ```

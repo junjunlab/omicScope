@@ -98,7 +98,6 @@ setMethod("dim_plot",
                   theme(panel.grid = element_blank(),
                         axis.text = element_text(colour = "black")) +
                   scale_color_brewer(palette = "Set2") +
-                  coord_equal(ratio = 1) +
                   xlab("Dim 1") + ylab("Dim 2")
           }
 )

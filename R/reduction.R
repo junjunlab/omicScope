@@ -100,9 +100,9 @@ setMethod("run_reduction",
                   stop("Please run normalize_data function first!")
               }
 
-              asy <- data.frame(SummarizedExperiment::assay(object,
-                                                            "normed_counts"),
+              asy <- data.frame(as.matrix(SummarizedExperiment::assay(object,"normed_counts")),
                                 check.names = FALSE)
+
 
               asy <- asy[rowSums(asy) > 0, ]
 

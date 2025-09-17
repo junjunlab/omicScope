@@ -3,13 +3,12 @@
 \name{run_enrichment}
 \alias{run_enrichment}
 \alias{run_enrichment,omicscope-method}
-\title{Perform Enrichment Analysis on Differential Expression Results}
+\title{Run Functional Enrichment Analysis}
 \usage{
 run_enrichment(object, ...)
 
 \S4method{run_enrichment}{omicscope}(
   object,
-  diff_data_selected = NULL,
   enrich_type = c("go", "gsea_go", "kegg", "gsea_kegg"),
   OrgDb = NULL,
   organism = "hsa",
@@ -17,108 +16,88 @@ run_enrichment(object, ...)
 )
 }
 \arguments{
-\item{object}{An \code{omicscope} S4 object containing differential expression results.
-The object must have differential expression data in the \code{diffExpData} slot
-(run \code{differential_expression} first).}
+\item{object}{An \code{omicscope} object containing differential expression
+results from \code{differential_expression()} method.}
 
 \item{...}{Additional arguments (currently not used).}
 
-\item{diff_data_selected}{A character vector specifying which differential expression
-comparisons to analyze. If \code{NULL} (default), all available comparisons will
-be analyzed. Should match names in \code{object@diffExpData}.}
-
-\item{enrich_type}{Character string specifying the type of enrichment analysis. Options are:
+\item{enrich_type}{Character string specifying the enrichment analysis type.
+Options are:
 \itemize{
 \item \code{"go"} - Gene Ontology over-representation analysis
-\item \code{"gsea_go"} - Gene Ontology Gene Set Enrichment Analysis
+\item \code{"gsea_go"} - Gene Ontology gene set enrichment analysis
 \item \code{"kegg"} - KEGG pathway over-representation analysis
-\item \code{"gsea_kegg"} - KEGG pathway Gene Set Enrichment Analysis
-}}
-
-\item{OrgDb}{An \code{OrgDb} annotation package object for gene ID conversion and
-annotation. Required for all analysis types. Examples: \code{org.Hs.eg.db} for human,
-\code{org.Mm.eg.db} for mouse. If \code{NULL}, the function will attempt to detect
-the appropriate package but may fail.}
-
-\item{organism}{A character string specifying the KEGG organism code for KEGG pathway
-analysis. Default is \code{"hsa"} for human. Common codes include:
-\itemize{
-\item \code{"hsa"} - Homo sapiens (human)
-\item \code{"mmu"} - Mus musculus (mouse)
-\item \code{"rno"} - Rattus norvegicus (rat)
-\item \code{"dme"} - Drosophila melanogaster (fruit fly)
+\item \code{"gsea_kegg"} - KEGG pathway gene set enrichment analysis
 }
-Only used for KEGG analysis types.}
+Default is \code{"go"}.}
 
-\item{pvalueCutoff}{A numeric value specifying the p-value cutoff for enrichment
-significance. Default is 1 (no filtering). Common values are 0.05 or 0.01.}
+\item{OrgDb}{An organism database object (e.g., \code{org.Hs.eg.db} for human,
+\code{org.Mm.eg.db} for mouse) used for gene ID conversion and annotation.
+Required parameter.}
+
+\item{organism}{Character string specifying the KEGG organism code
+(e.g., "hsa" for human, "mmu" for mouse). Only used for KEGG analysis.
+Default is \code{"hsa"}.}
+
+\item{pvalueCutoff}{Numeric value specifying the p-value cutoff for
+significance testing. Default is \code{1} (no filtering).}
 }
 \value{
-Returns the input \code{omicscope} object with enrichment results stored
-in the \code{enrichmentData} slot. Results can be accessed using
-\code{object@enrichmentData[[comparison_name]]}.
+An \code{omicscope} object with enrichment results stored in the
+\code{enrichmentData} slot. The results include:
+\itemize{
+\item For ORA: separate results for up-regulated and down-regulated genes
+\item For GSEA: ranked gene set enrichment results
+\item Gene symbols are made readable in the final results
+}
 }
 \description{
-This function performs functional enrichment analysis (Gene Ontology or KEGG pathway)
-on differential expression data stored in an omicscope object. It supports both
-over-representation analysis (ORA) and Gene Set Enrichment Analysis (GSEA).
+Performs functional enrichment analysis on differential expression results
+using Gene Ontology (GO) or KEGG pathway databases. Supports both
+over-representation analysis (ORA) and gene set enrichment analysis (GSEA).
 }
 \details{
-The function performs the following steps:
+This method performs functional enrichment analysis on previously computed
+differential expression results. The analysis workflow includes:
+
 \enumerate{
-\item Validates that differential expression data exists in the object
-\item For each selected comparison, extracts gene data and removes duplicates by selecting
-the gene with the lowest p-value
-\item Converts gene symbols to ENTREZ IDs using the provided OrgDb
-\item Performs the specified enrichment analysis:
-\itemize{
-\item For ORA methods ("go", "kegg"): Analyzes significantly up- and down-regulated genes separately
-\item For GSEA methods ("gsea_go", "gsea_kegg"): Uses ranked gene lists based on log2FoldChange
-}
-\item Stores results in the object's enrichmentData slot with descriptive names
+\item Gene ID conversion from gene symbols to Entrez IDs using \code{clusterProfiler::bitr()}
+\item For ORA methods (\code{"go"}, \code{"kegg"}): separate analysis for
+up-regulated and down-regulated genes
+\item For GSEA methods (\code{"gsea_go"}, \code{"gsea_kegg"}): ranked gene
+list analysis using log2 fold change values
+\item Results are stored in the \code{enrichmentData} slot of the object
 }
 
-For GO analysis, all three ontologies (BP, CC, MF) are analyzed together (ont = "ALL").
-For KEGG analysis, results are made readable by converting ENTREZ IDs back to gene symbols.
+The method requires that differential expression analysis has been performed
+first using the \code{differential_expression()} method.
 
-The differential expression data must contain columns: \code{gene_name}, \code{pvalue},
-\code{log2FoldChange}, and \code{type} (indicating "sigUp" or "sigDown").
+For GO analysis, all three ontologies (Biological Process, Cellular Component,
+Molecular Function) are analyzed simultaneously using \code{ont = "ALL"}.
 }
 \examples{
 \dontrun{
-# Load required packages
+# Load required libraries
+library(org.Mm.eg.db)  # for mouse
 library(org.Hs.eg.db)  # for human
 
-# Basic GO over-representation analysis
-obj <- run_enrichment(obj,
-                      enrich_type = "go",
-                      OrgDb = org.Hs.eg.db,
-                      pvalueCutoff = 0.05)
+# Assuming 'os' is an omicscope object with differential expression results
 
-# KEGG pathway analysis for specific comparisons
-obj <- run_enrichment(obj,
-                      diff_data_selected = c("Treatment_vs_Control"),
-                      enrich_type = "kegg",
-                      OrgDb = org.Hs.eg.db,
-                      organism = "hsa",
-                      pvalueCutoff = 0.05)
+# GO over-representation analysis (mouse)
+os_go <- run_enrichment(os,
+                        enrich_type = "go",
+                        OrgDb = org.Mm.eg.db)
 
-# Gene Set Enrichment Analysis for GO
-obj <- run_enrichment(obj,
-                      enrich_type = "gsea_go",
-                      OrgDb = org.Hs.eg.db,
-                      pvalueCutoff = 0.25)
+# KEGG gene set enrichment analysis (human)
+os_gsea <- run_enrichment(os,
+                          enrich_type = "gsea_kegg",
+                          OrgDb = org.Hs.eg.db,
+                          organism = "hsa",
+                          pvalueCutoff = 0.05)
 
-# Mouse analysis
-library(org.Mm.eg.db)
-obj <- run_enrichment(obj,
-                      enrich_type = "gsea_kegg",
-                      OrgDb = org.Mm.eg.db,
-                      organism = "mmu")
-
-# Access results
-enrich_results <- obj@enrichmentData
-go_results <- obj@enrichmentData[["Treatment_vs_Control"]]
+# Access enrichment results
+enrichment_results <- os_go@enrichmentData
 }
+
 
 }

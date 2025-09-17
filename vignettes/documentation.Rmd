@@ -1,5 +1,7 @@
 ---
-title: "documentation"
+title: "Getting Started with omicScope"
+author: "Jun Zhang"
+date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{documentation}
@@ -14,6 +16,166 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+# **Introduction**
+
+The **omicScope** package provides a comprehensive and integrated workflow for RNA-seq data analysis, from raw count matrices to biological interpretation. This package implements a unified framework that combines:
+
+-   Data normalization and quality control
+
+-   Dimensionality reduction and visualization
+
+-   Differential expression analysis
+
+-   Functional enrichment analysis
+
+-   Pathway and transcription factor activity inference
+
+This vignette demonstrates the complete workflow using a time-course RNA-seq dataset comparing gene expression across different developmental time points (day 0, day 4, and day 10).
+
+## **Installation**
+
+```{r,eval=FALSE}
+# Install from Bioconductor (if available)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("omicScope")
+
+# Or install from GitHub
+if (!requireNamespace("devtools", quietly = TRUE))
+    install.packages("devtools")
+devtools::install_github("yourusername/omicScope")
+```
+
+## **Required Dependencies**
+
+```{r,eval=FALSE}
 library(omicScope)
+library(SummarizedExperiment)
+library(org.Mm.eg.db)  # For mouse gene annotation
+```
+
+# **Data Preparation**
+
+## **Understanding the Example Dataset**
+
+The example dataset represents a time-course RNA-seq experiment studying cellular differentiation:
+
+-   **Time points**: Day 0 (undifferentiated), Day 4 (early differentiation), Day 10 (late differentiation)
+
+-   **Replicates**: 2 biological replicates per time point
+
+-   **Species**: Mouse (*Mus musculus*)
+
+-   **Sequencing**: Paired-end RNA-seq
+
+## **Loading Example Data**
+
+```{r,eval=FALSE}
+# Load example count data included with the package
+data("counts")
+
+# Examine the count matrix structure
+dim(counts)
+head(counts[,1:3])
+```
+
+## **Creating Sample Metadata**
+
+Proper metadata is crucial for downstream analysis:
+
+```{r,eval=FALSE}
+# Define BAM file paths (example paths)
+bams <- c("../test-bam/0a.sorted.bam","../test-bam/0b.sorted.bam",
+          "../test-bam/4a.sorted.bam","../test-bam/4b.sorted.bam", 
+          "../test-bam/10a.sorted.bam","../test-bam/10b.sorted.bam")
+
+# Create comprehensive metadata
+mta <- data.frame(
+  sample = bams,
+  sample_name = c("day0-rep1","day0-rep2",
+                  "day4-rep1","day4-rep2", 
+                  "day10-rep1","day10-rep2"),
+  group = rep(c("day0","day4","day10"), each = 2),
+  replicate = rep(c("rep1", "rep2"), 3),
+  stringsAsFactors = FALSE
+)
+
+# Display metadata
+print(mta)
+```
+
+## **Creating the omicScope Object**
+
+The `omicscope` object is the central data structure that stores all analysis results:
+
+```{r,eval=FALSE}
+# Create omicscope object with GTF annotation
+os <- omicscope(gtfAnno = "../test-bam/Mus_musculus.GRCm38.102.gtf.gz",
+                counts = counts,
+                metadata = mta)
+
+# Examine the object structure
+os
+
+# Check object components
+cat("Number of genes:", nrow(os), "\n")
+cat("Number of samples:", ncol(os), "\n")
+cat("Available assays:", paste(assayNames(os), collapse = ", "), "\n")
+```
+
+Downstream workflows:
+
+```{r,eval=FALSE}
+# 1. Data normalization
+os <- normalize_data(os, norm_type = "tpm")
+
+# 2. Dimensionality reduction
+os <- run_reduction(os, reduction = "pca")
+
+
+# Visualize PCA
+dim_plot(os)
+
+# 3. Differential expression analysis
+os <- differential_expression(os,
+                              method = "deseq2",
+                              selectedSample = c("day0-rep1","day0-rep2",
+                                                 "day10-rep1","day10-rep2"),
+                              deseq2Contrast = c('group', 'day10', 'day0')
+)
+
+# Volcano plot
+volcano_plot(os, method = "deseq2")
+
+# 4. Functional enrichment analysis
+library(org.Mm.eg.db)
+
+os <- run_enrichment(os, 
+                     enrich_type = "go",
+                     OrgDb = org.Mm.eg.db)
+
+
+# 5. Activity inference
+# Pathway activity
+os <- infer_activity(os, 
+                     input_type = "counts",
+                     infer_type = "pathway",
+                     organism = "mouse",
+                     use_local_netdata = TRUE)
+
+activity_plot(os)
+
+# Transcription factor activity  
+os <- infer_activity(os, 
+                     input_type = "counts",
+                     infer_type = "tf",
+                     statistics = "ulm",
+                     organism = "mouse",
+                     use_local_netdata = TRUE)
+
+activity_plot(os, target_tf = c("Pou5f1", "Sox2"))
+```
+
+```{r setup}
+sessionInfo()
 ```
