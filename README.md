@@ -1,14 +1,11 @@
-# omicScope <img src="man/figures/logo.png" align="right" width="120"/>
-
 <!-- badges: start -->
 
-[![Codecov test coverage](https://codecov.io/gh/junjunlab/omicScope/branch/main/graph/badge.svg)](https://codecov.io/gh/junjunlab/omicScope?branch=main) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+# omicScope <img src="man/figures/logo.png" align="right" width="130"/>
 
-[![GitHub issues](https://img.shields.io/github/issues/saezlab/decoupleR)](https://github.com/saezlab/decoupleR/issues)
+[![Codecov test coverage](https://codecov.io/gh/junjunlab/omicScope/branch/main/graph/badge.svg)](https://codecov.io/gh/junjunlab/omicScope?branch=main) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental) [![GitHub issues](https://img.shields.io/github/issues/saezlab/decoupleR)](https://github.com/saezlab/decoupleR/issues)
 
 <!-- badges: end -->
 
-## Overview
 
 ## Overview
 
@@ -75,7 +72,7 @@ os <- get_normalized_data(os, method = "cpm")
 
 # 2. Dimensionality reduction
 os <- run_pca(os)
-os <- run_umap(os)
+
 
 # Visualize PCA
 pca_plot(os, color_by = "treatment")
