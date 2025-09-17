@@ -1,4 +1,4 @@
-# omicScope <img src="man/figures/logo.png" align="right" width="120"/>
+# omicScope <img src="man/figures/logo.png" align="right" width="250"/>
 
 <!-- badges: start -->
 
@@ -8,7 +8,6 @@
 
 <!-- badges: end -->
 
-## Overview
 
 ## Overview
 
