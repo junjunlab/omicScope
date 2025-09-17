@@ -59,50 +59,69 @@ Here's a basic workflow demonstrating omicScope's capabilities:
 library(omicScope)
 
 # Load example data or create omicscope object from count matrix
+bams <- c("../test-bam/0a.sorted.bam","../test-bam/0b.sorted.bam",
+          "../test-bam/4a.sorted.bam","../test-bam/4b.sorted.bam",
+          "../test-bam/10a.sorted.bam","../test-bam/10b.sorted.bam")
+
+mta <- data.frame(sample = bams,
+                  sample_name = c("day0-rep1","day0-rep2",
+                                  "day4-rep1","day4-rep2",
+                                  "day10-rep1","day10-rep2"),
+                  group = rep(c("day0","day4","day10"),each = 2))
+
+
+data("counts")
 
 # Create omicscope object
-os <- create_omicscope(counts = example_counts, 
-                       colData = example_metadata,
-                       organism = "mouse")
+os <- omicscope(gtfAnno = "Mus_musculus.GRCm38.102.gtf.gz",
+                counts = counts,
+                metadata = mta)
 
 # 1. Data normalization
-os <- get_normalized_data(os, method = "cpm")
+os <- get_normalized_data(os, method = "tpm")
 
 # 2. Dimensionality reduction
 os <- run_pca(os)
 
 
 # Visualize PCA
-pca_plot(os, color_by = "treatment")
+pca_plot(os)
 
 # 3. Differential expression analysis
 os <- run_differential_expression(os, 
                                   method = "deseq2",
-                                  design = "~ treatment")
+                                  selectedSample = c("day0-rep1","day0-rep2",
+                                                     "day10-rep1","day10-rep2"),
+                                  deseq2Contrast = c('group', 'day10', 'day0')
+                                  )
 
 # Volcano plot
 volcano_plot(os, comparison = "treat_vs_control")
 
 # 4. Functional enrichment analysis
+library(org.Mm.eg.db)
+
 os <- run_enrichment(os, 
-                     method = "gsea",
-                     gene_sets = "GO_BP")
+                     enrich_type = "go",
+                     OrgDb = org.Mm.eg.db)
 
 # 5. Activity inference
 # Pathway activity
 os <- infer_activity(os, 
-                     input_type = "diff_data",
+                     input_type = "counts",
                      infer_type = "pathway",
-                     organism = "mouse")
+                     organism = "mouse",
+                     use_local_netdata = TRUE)
 
 activity_plot(os)
 
 # Transcription factor activity  
 os <- infer_activity(os, 
-                     input_type = "diff_data",
+                     input_type = "counts",
                      infer_type = "tf",
                      statistics = "ulm",
-                     organism = "mouse")
+                     organism = "mouse",
+                     use_local_netdata = TRUE)
 
 activity_plot(os, target_tf = c("Pou5f1", "Sox2"))
 ```

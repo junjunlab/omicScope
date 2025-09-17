@@ -9,9 +9,14 @@
 #'   or NULL. If provided, gene annotations will be parsed and stored in the object
 #' @param bamFile Character vector of BAM file paths for read counting.
 #'   Used when starting analysis from aligned reads rather than count matrices
-#' @param counts Character string specifying the path to a count matrix file,
-#'   or NULL. The file should contain gene expression counts with genes as rows
-#'   and samples as columns
+#' @param counts A count matrix, data.frame, or character string specifying
+#'   the path to a count file. Accepts various formats:
+#'   \itemize{
+#'     \item Matrix or data.frame with genes as rows and samples as columns
+#'     \item Path to a tab-delimited count file with row names as gene IDs
+#'     \item featureCounts output file (specify \code{featureCountOutput = TRUE})
+#'   }
+#'   Default: \code{NULL}.
 #' @param featureCountOutput Logical value indicating whether the count file is
 #'   output from featureCounts. If TRUE, the first 7 columns (annotation columns)
 #'   will be skipped. Default is FALSE
@@ -170,9 +175,14 @@ omicscope <- function(gtfAnno = NULL,
     # ==========================================================================
     # load counts
     if(!is.null(counts) && is.null(bamFile)){
-        ct <- read.table(file = counts,skip = "#",
-                         header = TRUE,
-                         row.names = 1,check.names = FALSE)
+        # check counts
+        if(inherits(counts,c("data.frame","matrix"))){
+            ct <- counts
+        }else if(is.character(counts)){
+            ct <- read.table(file = counts,skip = "#",
+                             header = TRUE,
+                             row.names = 1,check.names = FALSE)
+        }
 
         # check featurecounts output?
         if(featureCountOutput == TRUE){
