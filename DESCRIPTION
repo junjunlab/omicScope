@@ -1,13 +1,52 @@
-Package: omicScpe
-Title: What the Package Does (One Line, Title Case)
+Package: omicScope
+Title: A Comprehensive and Integrated Framework for Transcriptomic Data Analysis
 Version: 0.0.1
 Authors@R: 
     person("Jun", "Zhang", , "3219030654@stu.cpu.edu.cn", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: Provides a streamlined and user-friendly workflow for the end-to-end
+    analysis of transcriptomic data. 'omicScope' leverages the SummarizedExperiment 
+    class for robust data management and offers a suite of tools for essential analysis
+    steps, including data normalization, differential expression analysis (interfacing 
+    with popular methods like DESeq2, edgeR, and limma), and advanced functional 
+    interpretation. A key feature is the implementation of pathway and transcription 
+    factor (TF) activity inference using the 'decoupleR' framework, enabling users 
+    to move from gene expression changes to functional biological insights within a 
+    single, cohesive environment..
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+Depends: R (>= 4.1.0)
 Imports: 
+    clusterProfiler,
+    ComplexHeatmap,
+    cowplot,
+    DESeq2,
+    dplyr,
+    edgeR,
     GenomicRanges,
-    rtracklayer
+    ggplot2,
+    IRanges,
+    limma,
+    Matrix,
+    methods,
+    Rsubread,
+    rtracklayer,
+    S4Vectors,
+    SummarizedExperiment,
+    tibble,
+    tidyr,
+    corrplot,
+    scales
+Enhances: 
+    Rtsne,
+    umap
+Suggests: 
+    ggpubr,
+    decoupleR,
+    ggpp,
+    ggrepel,
+    knitr,
+    OmnipathR,
+    rmarkdown
+VignetteBuilder: knitr
