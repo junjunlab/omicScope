@@ -58,8 +58,6 @@ Here's a basic workflow demonstrating omicScope's capabilities:
 library(SummarizedExperiment)
 library(omicScope)
 
-
-
 # Load example data or create omicscope object from count matrix
 bams <- c("../test-bam/0a.sorted.bam","../test-bam/0b.sorted.bam",
           "../test-bam/4a.sorted.bam","../test-bam/4b.sorted.bam",
