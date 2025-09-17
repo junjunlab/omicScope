@@ -59,8 +59,6 @@ Here's a basic workflow demonstrating omicScope's capabilities:
 library(omicScope)
 
 # Load example data or create omicscope object from count matrix
-data("example_counts")  # Example count matrix
-data("example_metadata") # Sample metadata
 
 # Create omicscope object
 os <- create_omicscope(counts = example_counts, 
