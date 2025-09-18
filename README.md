@@ -50,7 +50,7 @@ omicScope is an open-source project and we actively encourage community contribu
 -   💡 **Testing** - Add unit tests or test with your own datasets.
 -   💡 **Ideas** - Share suggestions for improvements or new directions.
 
-## Quick Start
+## Quick start
 
 Here's a basic workflow demonstrating omicScope's capabilities:
 
@@ -86,3 +86,7 @@ os
 # colnames(6): day0-rep1 day0-rep2 ... day10-rep1 day10-rep2
 # colData names(3): sample sample_name group
 ```
+
+## Future plan
+
+Subsequent versions will incorporate enhanced functionality and additional features to extend the package's analytical capabilities.
