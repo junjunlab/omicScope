@@ -10,6 +10,8 @@
 
 **omicScope** is a comprehensive R package for one-stop RNA-seq data analysis and visualization. Built on the **SummarizedExperiment** data structure and modern S4 object-oriented framework, omicScope provides a unified interface for the entire RNA-seq analysis workflow - from mapped BAM files or raw count matrices to meaningful biological insights. By leveraging the well-established Bioconductor infrastructure, omicScope ensures seamless integration with the broader ecosystem of genomic analysis tools.
 
+> **We recommend using the GTF file from Ensembl for quantification and annotation for now.**
+
 ## Key Features
 
 -   📦 **Data Normalization**: Multiple normalization methods (CPM, TPM, RPKM/FPKM)
