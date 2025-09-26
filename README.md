@@ -15,7 +15,7 @@
 ## Key Features
 
 -   📦 **Data Normalization**: Multiple normalization methods (CPM, TPM, RPKM/FPKM)
--   📦 **Dimensionality Reduction**: PCA, t-SNE, UMAP analysis with interactive visualizations
+-   📦 **Dimensionality Reduction**: PCA, t-SNE, UMAP analysis
 -   📦 **Differential Expression**: Integration with DESeq2, edgeR, and limma
 -   📦 **Functional Enrichment**: GO, KEGG, and custom gene set enrichment analysis
 -   📦 **Activity Inference**: Pathway and transcription factor activity estimation using decoupleR
