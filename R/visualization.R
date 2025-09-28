@@ -43,7 +43,7 @@
 #' @seealso
 #' \code{\link{run_reduction}}, \code{\link{normalize_data}}
 #'
-#' @importFrom ggplot2 ggplot aes geom_point geom_hline geom_vline theme_bw theme
+#' @importFrom ggplot2 ggplot aes geom_point geom_hline geom_vline theme_bw theme stat_ellipse
 #' @importFrom ggplot2 element_blank element_text scale_color_brewer coord_equal xlab ylab
 #' @export
 setGeneric("dim_plot",function(object,...){
@@ -93,6 +93,9 @@ setMethod("dim_plot",
                   pc_scores <- coldata |>
                       dplyr::inner_join(y = pc_scores, by = "sample")
 
+                  variance <- data$sdev^2
+                  variance_percent <- variance / sum(variance) * 100
+
               }else if(reduction == "umap"){
 
               }else if(reduction == "tsne"){
@@ -101,15 +104,17 @@ setMethod("dim_plot",
 
               # plot
               ggplot(pc_scores,aes(x = PC1, y = PC2,color = .data[[color_by]])) +
+                  stat_ellipse(geom = "polygon", aes(fill = .data[[color_by]]), alpha = 0.2) +
                   geom_point(size = 1) +
-                  geom_hline(yintercept = 0,lty = "dashed") +
-                  geom_vline(xintercept = 0,lty = "dashed") +
+                  geom_hline(yintercept = 0,lty = "dashed", color = "grey") +
+                  geom_vline(xintercept = 0,lty = "dashed", color = "grey") +
                   theme_bw() +
                   theme(panel.grid = element_blank(),
                         aspect.ratio = 1,
                         axis.text = element_text(colour = "black")) +
-                  scale_color_brewer(palette = "Set2") +
-                  xlab("Dim 1") + ylab("Dim 2") +
+                  # scale_color_brewer(palette = "Set2") +
+                  xlab(paste0("Dim 1 ","(",round(variance_percent[1],digits = 2),"%)")) +
+                  ylab(paste0("Dim 2 ","(",round(variance_percent[2],digits = 2),"%)")) +
                   guides(color = guide_legend(override.aes = list(size = 4)))
           }
 )

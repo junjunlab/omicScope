@@ -547,6 +547,8 @@ ucscZenaToObj <- function(gtf_anno = NULL,
 
         mt2 <- dplyr::bind_rows(mt, gtex.ph)
 
+        mt2$group2 <- paste(mt2$batch, mt2$group,sep = "-")
+
         # identical(colnames(ct2), rownames(mt2))
     }else{
         ct2 <- ct

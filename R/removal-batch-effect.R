@@ -75,7 +75,8 @@ setMethod("correct_batch_effect",
                   stop("Please supply counts data!")
               }
 
-              asy <- SummarizedExperiment::assay(object,"counts")
+              asy <- SummarizedExperiment::assay(object,"counts") |>
+                  as.matrix()
 
               # metadata
               coldata <- data.frame(SummarizedExperiment::colData(object),
