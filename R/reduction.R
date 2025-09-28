@@ -16,6 +16,8 @@
 #'     \item \code{"tsne"} - t-Distributed Stochastic Neighbor Embedding
 #'   }
 #'   Default is \code{c("pca","umap","tsne")}, which will use "pca" as the first choice.
+#' @param top_hvg_genes An integer specifying the number of highly variable genes
+#' to use for the reduction. Defaults is NULL.
 #' @param umapParams A list of parameters to pass to \code{\link[umap]{umap}} function.
 #'   Common parameters include:
 #'   \itemize{
@@ -70,7 +72,7 @@
 #' }
 #'
 #'
-#' @importFrom stats prcomp
+#' @importFrom stats prcomp var
 #' @importFrom utils modifyList
 #'
 #' @export
@@ -89,6 +91,7 @@ setMethod("run_reduction",
           signature(object = "omicscope"),
           function(object,
                    reduction = c("pca","umap","tsne"),
+                   top_hvg_genes = NULL,
                    umapParams = list(),
                    tsneParams = list()){
               reduction <- match.arg(reduction, choices = reduction)
@@ -105,13 +108,20 @@ setMethod("run_reduction",
 
 
               asy <- asy[rowSums(asy) > 0, ]
+              row_vars <- apply(asy, 1, stats::var)
+              asy <- asy[row_vars > 0, ]
+
+              if(!is.null(top_hvg_genes)){
+                  top_hvg <- names(sort(row_vars, decreasing = TRUE))[1:top_hvg_genes]
+                  asy <- asy[top_hvg, ]
+              }
 
               # zscore
               asy.zs <- t(scale(t(asy), center = TRUE,scale = TRUE))
 
               # do reduction
               if(reduction == "pca"){
-                  reduc <- stats::prcomp(x = t(asy.zs))
+                  reduc <- stats::prcomp(x = t(asy.zs), center = FALSE, scale. = FALSE)
               }else if(reduction == "umap"){
                   if (!requireNamespace("umap", quietly = TRUE)) {
                       stop("Package 'umap' is required for UMAP reduction.\n",

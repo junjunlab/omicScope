@@ -37,7 +37,8 @@ Imports:
     tibble,
     tidyr,
     corrplot,
-    scales
+    scales,
+    data.table
 Enhances: 
     Rtsne,
     umap

@@ -10,6 +10,7 @@ run_reduction(object, ...)
 \S4method{run_reduction}{omicscope}(
   object,
   reduction = c("pca", "umap", "tsne"),
+  top_hvg_genes = NULL,
   umapParams = list(),
   tsneParams = list()
 )
@@ -28,6 +29,9 @@ Options are:
 \item \code{"tsne"} - t-Distributed Stochastic Neighbor Embedding
 }
 Default is \code{c("pca","umap","tsne")}, which will use "pca" as the first choice.}
+
+\item{top_hvg_genes}{An integer specifying the number of highly variable genes
+to use for the reduction. Defaults is NULL.}
 
 \item{umapParams}{A list of parameters to pass to \code{\link[umap]{umap}} function.
 Common parameters include:

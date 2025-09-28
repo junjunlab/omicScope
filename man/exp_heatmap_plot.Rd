@@ -11,6 +11,7 @@ exp_heatmap_plot(object, ...)
   object,
   selected_gene = NULL,
   selected_sample = NULL,
+  color_by = "group",
   complexHeatmap_params = list()
 )
 }
@@ -24,8 +25,11 @@ Run \code{get_normalized_data()} first if this data is not available.}
 \item{selected_gene}{Character vector. Specific gene names to include in the heatmap.
 If \code{NULL} (default), randomly selects 25 genes from the dataset for visualization.}
 
-\item{selected_sample}{Character vector. Specific sample names to include in the heatmap.
-If \code{NULL} (default), includes all available samples.}
+\item{selected_sample}{Character vector of sample names to include in the heatmap.
+If NULL (default), all samples will be included.}
+
+\item{color_by}{Character string specifying the column name in colData to use
+for sample annotation coloring. Default is "group".}
 
 \item{complexHeatmap_params}{List. Additional parameters to pass to
 \code{ComplexHeatmap::Heatmap()} function for customizing the heatmap appearance.
@@ -41,33 +45,31 @@ optional gene and sample filtering capabilities.
 }
 \examples{
 \dontrun{
-# First ensure normalized data is available
-os <- get_normalized_data(os)
-
-# Basic heatmap with 25 random genes
-exp_heatmap_plot(os)
-
-# Heatmap with specific samples
-exp_heatmap_plot(os,
-                 selected_sample = c("day0-rep1", "day0-rep2",
-                                    "day10-rep1", "day10-rep2"))
+# Basic heatmap with random 25 genes
+heatmap1 <- exp_heatmap_plot(omics_obj)
 
 # Heatmap with specific genes
-exp_heatmap_plot(os,
-                 selected_gene = c("Gapdh", "Actb", "Tubb3", "Sox2", "Nanog"))
+selected_genes <- c("GENE1", "GENE2", "GENE3")
+heatmap2 <- exp_heatmap_plot(omics_obj, selected_gene = selected_genes)
 
-# Custom heatmap with specific genes and samples
-exp_heatmap_plot(os,
-                 selected_gene = c("Pou5f1", "Sox2", "Nanog"),
-                 selected_sample = c("day0-rep1", "day4-rep1", "day10-rep1"))
+# Heatmap with specific samples and custom grouping
+selected_samples <- c("Sample1", "Sample2", "Sample3")
+heatmap3 <- exp_heatmap_plot(omics_obj,
+                             selected_gene = selected_genes,
+                             selected_sample = selected_samples,
+                             color_by = "treatment")
 
-# Custom heatmap parameters
-exp_heatmap_plot(os,
-                 complexHeatmap_params = list(
-                   cluster_rows = FALSE,
-                   show_column_names = FALSE,
-                   heatmap_legend_param = list(title = "Expression Z-score")
-                 ))
+# Custom ComplexHeatmap parameters
+custom_params <- list(
+  show_column_dend = FALSE,
+  column_title = "Gene Expression",
+  heatmap_legend_param = list(title = "Expression Z-score")
+)
+heatmap4 <- exp_heatmap_plot(omics_obj,
+                             complexHeatmap_params = custom_params)
+
+# Display the heatmap
+ComplexHeatmap::draw(heatmap1)
 }
 
 

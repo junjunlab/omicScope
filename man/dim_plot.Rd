@@ -7,7 +7,7 @@
 \usage{
 dim_plot(object, ...)
 
-\S4method{dim_plot}{omicscope}(object, reduction = c("pca", "umap", "tsne"))
+\S4method{dim_plot}{omicscope}(object, reduction = c("pca", "umap", "tsne"), color_by = "group")
 }
 \arguments{
 \item{object}{An \code{omicscope} S4 object containing dimensionality reduction results.
@@ -24,6 +24,9 @@ Options are:
 \item \code{"tsne"} - t-SNE scatter plot (currently not implemented)
 }
 Default is \code{c("pca","umap","tsne")}, which will use "pca" as the first choice.}
+
+\item{color_by}{A character string specifying the column name in \code{colData(object)}
+to be used for coloring the points on the plot. Defaults to \code{"group"}.}
 }
 \value{
 A \code{ggplot2} object showing the PCA scatter plot with samples colored

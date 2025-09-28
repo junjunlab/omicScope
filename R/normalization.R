@@ -112,13 +112,6 @@ setMethod("normalize_data",
 #'
 #'
 #' @return An \code{omicscope} object with updated \code{normalizedData} slot
-#'   containing:
-#'   \itemize{
-#'     \item \code{wider}: A data frame in wide format with genes as rows,
-#'       samples as columns, plus gene annotation columns
-#'     \item \code{longer}: A data frame in long format with columns for
-#'       sample, value, and all gene annotation information
-#'   }
 #'
 #'
 #'
@@ -130,11 +123,9 @@ setMethod("normalize_data",
 #' # Then extract formatted normalized data
 #' omics_obj <- get_normalized_data(omics_obj)
 #'
-#' # Access wide format data
-#' wide_data <- omics_obj@normalizedData$wider
+#' # Access data
+#' wide_data <- omics_obj@normalizedData
 #'
-#' # Access long format data for plotting
-#' long_data <- omics_obj@normalizedData$longer
 #'
 #' }
 #'
@@ -175,20 +166,19 @@ setMethod("get_normalized_data",
               asy.anno <- cbind(as.matrix(asy),ga)
 
               # tolong format
-              asy.anno.lg <- asy.anno |>
-                  tidyr::pivot_longer(cols = colnames(asy),
-                                      names_to = "sample",
-                                      values_to = "value")
+              # asy.anno.lg <- asy.anno |>
+              #     tidyr::pivot_longer(cols = colnames(asy),
+              #                         names_to = "sample",
+              #                         values_to = "value")
+              #
+              # cold <- SummarizedExperiment::colData(object) |>
+              #     data.frame(check.names = FALSE)
+              #
+              # asy.anno.lg <- asy.anno.lg |>
+              #     dplyr::inner_join(y = cold, by = "sample")
 
-              cold <- SummarizedExperiment::colData(object) |>
-                  data.frame(check.names = FALSE)
 
-              asy.anno.lg <- asy.anno.lg |>
-                  dplyr::inner_join(y = cold, by = "sample")
-
-
-              object@normalizedData <- list(wider = asy.anno,
-                                            longer = asy.anno.lg)
+              object@normalizedData <- asy.anno
 
               return(object)
           }

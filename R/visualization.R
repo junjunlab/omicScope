@@ -15,6 +15,8 @@
 #'     \item \code{"tsne"} - t-SNE scatter plot (currently not implemented)
 #'   }
 #'   Default is \code{c("pca","umap","tsne")}, which will use "pca" as the first choice.
+#' @param color_by A character string specifying the column name in `colData(object)`
+#' to be used for coloring the points on the plot. Defaults to `"group"`.
 #' @param ... Additional arguments (currently not used).
 #'
 #' @return A \code{ggplot2} object showing the PCA scatter plot with samples colored
@@ -58,7 +60,8 @@ setGeneric("dim_plot",function(object,...){
 setMethod("dim_plot",
           signature(object = "omicscope"),
           function(object,
-                   reduction = c("pca","umap","tsne")){
+                   reduction = c("pca","umap","tsne"),
+                   color_by = "group"){
               reduction <- match.arg(reduction, choices = reduction)
               # ==================================================================
               # check data
@@ -82,6 +85,13 @@ setMethod("dim_plot",
                   pc_scores <- data.frame(data$x, check.names = FALSE)
                   pc_scores$sample <- rownames(pc_scores)
 
+                  # metadata
+                  coldata <- data.frame(SummarizedExperiment::colData(object),
+                                        check.names = FALSE,
+                                        stringsAsFactors = T)
+
+                  pc_scores <- coldata |>
+                      dplyr::inner_join(y = pc_scores, by = "sample")
 
               }else if(reduction == "umap"){
 
@@ -90,15 +100,17 @@ setMethod("dim_plot",
               }
 
               # plot
-              ggplot(pc_scores,aes(x = PC1, y = PC2,color = sample)) +
-                  geom_point(size = 3) +
+              ggplot(pc_scores,aes(x = PC1, y = PC2,color = .data[[color_by]])) +
+                  geom_point(size = 1) +
                   geom_hline(yintercept = 0,lty = "dashed") +
                   geom_vline(xintercept = 0,lty = "dashed") +
                   theme_bw() +
                   theme(panel.grid = element_blank(),
+                        aspect.ratio = 1,
                         axis.text = element_text(colour = "black")) +
                   scale_color_brewer(palette = "Set2") +
-                  xlab("Dim 1") + ylab("Dim 2")
+                  xlab("Dim 1") + ylab("Dim 2") +
+                  guides(color = guide_legend(override.aes = list(size = 4)))
           }
 )
 
@@ -616,8 +628,10 @@ setMethod("activity_plot",
 #'   Run \code{get_normalized_data()} first if this data is not available.
 #' @param selected_gene Character vector. Specific gene names to include in the heatmap.
 #'   If \code{NULL} (default), randomly selects 25 genes from the dataset for visualization.
-#' @param selected_sample Character vector. Specific sample names to include in the heatmap.
-#'   If \code{NULL} (default), includes all available samples.
+#' @param selected_sample Character vector of sample names to include in the heatmap.
+#'   If NULL (default), all samples will be included.
+#' @param color_by Character string specifying the column name in colData to use
+#'   for sample annotation coloring. Default is "group".
 #' @param complexHeatmap_params List. Additional parameters to pass to
 #'   \code{ComplexHeatmap::Heatmap()} function for customizing the heatmap appearance.
 #'   Default is an empty list.
@@ -637,33 +651,31 @@ setMethod("activity_plot",
 #'
 #' @examples
 #' \dontrun{
-#' # First ensure normalized data is available
-#' os <- get_normalized_data(os)
-#'
-#' # Basic heatmap with 25 random genes
-#' exp_heatmap_plot(os)
-#'
-#' # Heatmap with specific samples
-#' exp_heatmap_plot(os,
-#'                  selected_sample = c("day0-rep1", "day0-rep2",
-#'                                     "day10-rep1", "day10-rep2"))
+#' # Basic heatmap with random 25 genes
+#' heatmap1 <- exp_heatmap_plot(omics_obj)
 #'
 #' # Heatmap with specific genes
-#' exp_heatmap_plot(os,
-#'                  selected_gene = c("Gapdh", "Actb", "Tubb3", "Sox2", "Nanog"))
+#' selected_genes <- c("GENE1", "GENE2", "GENE3")
+#' heatmap2 <- exp_heatmap_plot(omics_obj, selected_gene = selected_genes)
 #'
-#' # Custom heatmap with specific genes and samples
-#' exp_heatmap_plot(os,
-#'                  selected_gene = c("Pou5f1", "Sox2", "Nanog"),
-#'                  selected_sample = c("day0-rep1", "day4-rep1", "day10-rep1"))
+#' # Heatmap with specific samples and custom grouping
+#' selected_samples <- c("Sample1", "Sample2", "Sample3")
+#' heatmap3 <- exp_heatmap_plot(omics_obj,
+#'                              selected_gene = selected_genes,
+#'                              selected_sample = selected_samples,
+#'                              color_by = "treatment")
 #'
-#' # Custom heatmap parameters
-#' exp_heatmap_plot(os,
-#'                  complexHeatmap_params = list(
-#'                    cluster_rows = FALSE,
-#'                    show_column_names = FALSE,
-#'                    heatmap_legend_param = list(title = "Expression Z-score")
-#'                  ))
+#' # Custom ComplexHeatmap parameters
+#' custom_params <- list(
+#'   show_column_dend = FALSE,
+#'   column_title = "Gene Expression",
+#'   heatmap_legend_param = list(title = "Expression Z-score")
+#' )
+#' heatmap4 <- exp_heatmap_plot(omics_obj,
+#'                              complexHeatmap_params = custom_params)
+#'
+#' # Display the heatmap
+#' ComplexHeatmap::draw(heatmap1)
 #' }
 #'
 #'
@@ -686,16 +698,17 @@ setMethod("exp_heatmap_plot",
           function(object,
                    selected_gene = NULL,
                    selected_sample = NULL,
+                   color_by = "group",
                    complexHeatmap_params = list()){
               # ==================================================================
               # get normalized counts
-              ck <- length(object@normalizedData$longer) == 0
+              ck <- is.null(object@normalizedData)
 
               if(ck){
                   stop("Please run get_normalized_data function first!")
               }
 
-              pdf <- object@normalizedData$longer
+              pdf <- object@normalizedData
 
               # check gene
               if(is.null(selected_gene)){
@@ -706,18 +719,30 @@ setMethod("exp_heatmap_plot",
                   pdf <- subset(pdf, gene_name %in% selected_gene)
               }
 
+              # tolong format
+              pdf.lg <- pdf |>
+                  tidyr::pivot_longer(cols = colnames(pdf)[1:(ncol(pdf) - 3)],
+                                      names_to = "sample",
+                                      values_to = "value")
+
+              cold <- SummarizedExperiment::colData(object) |>
+                  data.frame(check.names = FALSE)
+
+              pdf.anno.lg <- pdf.lg |>
+                  dplyr::inner_join(y = cold, by = "sample")
+
               # check sample
               if(!is.null(selected_sample)){
-                  pdf <- subset(pdf, sample_name %in% selected_sample)
+                  pdf.anno.lg <- subset(pdf.anno.lg, sample %in% selected_sample)
               }
 
-              pdf_mat <- pdf |>
-                  dplyr::select(gene_name, sample_name, value)
+              pdf_mat <- pdf.anno.lg |>
+                  dplyr::select(gene_name, sample, value)
 
               # Transform to wide matrix
               pdf_mat <- pdf_mat |>
                   tidyr::pivot_wider(id_cols = 'gene_name',
-                                     names_from = 'sample_name',
+                                     names_from = 'sample',
                                      values_from = 'value') |>
                   tibble::column_to_rownames('gene_name') |>
                   t()
@@ -726,19 +751,22 @@ setMethod("exp_heatmap_plot",
               # Scale per feature
               pdf_mat <- as.matrix(scale(pdf_mat,center = TRUE,scale = TRUE))
 
-              gp <- pdf |> dplyr::select(sample_name,group) |> unique()
+              gp <- pdf.anno.lg[,c("sample",color_by)] |> unique() |> data.frame(check.names = FALSE)
+              rownames(gp) <- gp$sample
+              gp <- gp[rownames(pdf_mat),]
 
-              raw.anno <- ComplexHeatmap::rowAnnotation(sample = gp$group,
+              raw.anno <- ComplexHeatmap::rowAnnotation(Sample = gp$group,
                                                         show_annotation_name = FALSE)
 
               # plot
               pres <- do.call(ComplexHeatmap::Heatmap,
                               modifyList(list(matrix = pdf_mat,
-                                              name = "zscore",
-                                              cluster_columns = FALSE,
-                                              rect_gp = grid::gpar(col = "white"),
+                                              name = "Z-score",
+                                              cluster_columns = TRUE,
+                                              # rect_gp = grid::gpar(col = "white"),
                                               na_col = "black",
                                               left_annotation = raw.anno,
+                                              show_row_names = F,
                                               column_names_gp = grid::gpar(fontface = "italic"),
                                               border = TRUE),
                                          complexHeatmap_params))
@@ -746,6 +774,7 @@ setMethod("exp_heatmap_plot",
               return(pres)
           }
 )
+
 
 
 

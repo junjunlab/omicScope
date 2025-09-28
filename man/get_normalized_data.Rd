@@ -17,13 +17,6 @@ The object must have been processed with \code{\link{normalize_data}} first.}
 }
 \value{
 An \code{omicscope} object with updated \code{normalizedData} slot
-containing:
-\itemize{
-\item \code{wider}: A data frame in wide format with genes as rows,
-samples as columns, plus gene annotation columns
-\item \code{longer}: A data frame in long format with columns for
-sample, value, and all gene annotation information
-}
 }
 \description{
 This function extracts normalized expression data from an \code{omicscope}
@@ -38,11 +31,9 @@ omics_obj <- normalize_data(omics_obj, norm_type = "tpm")
 # Then extract formatted normalized data
 omics_obj <- get_normalized_data(omics_obj)
 
-# Access wide format data
-wide_data <- omics_obj@normalizedData$wider
+# Access data
+wide_data <- omics_obj@normalizedData
 
-# Access long format data for plotting
-long_data <- omics_obj@normalizedData$longer
 
 }
 
