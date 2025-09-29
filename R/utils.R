@@ -339,3 +339,58 @@ ComBat_seq_devel <- function(counts, batch, group=NULL, covar_mod=NULL, full_mod
     adjust_counts_whole[rm, ] <- countsOri[rm, ]
     return(adjust_counts_whole)
 }
+
+
+
+
+
+# codes from https://github.com/kassambara/survminer/blob/e23fa1229c4e7624739d54d7b76885950ca61f74/R/surv_cutpoint.R
+surv_cutpoint <- function(data, time = "time", event = "event", variables,
+                          minprop = 0.1, progressbar = TRUE){
+    if(!inherits(data, "data.frame"))
+        stop("data should be an object of class data.frame")
+    data <- as.data.frame(data)
+    if(!all(c(time, event) %in% colnames(data)))
+        stop("Specify correct column names containing time and event values.")
+    if(!all(variables %in% colnames(data)))
+        stop("Some variables are not found in the data: ",
+             paste(setdiff(variables, colnames(data)), collapse =", "))
+
+    not_numeric_vars <- .get_not_numeric_vars(data[, variables, drop = FALSE])
+    variables <- setdiff(variables, not_numeric_vars) # keep only numeric variables
+    if(length(variables)==0) stop("At least, one numeric variables required.")
+
+    nvar <- length(variables)
+    if(nvar <= 5) progressbar <- FALSE
+    if(progressbar) pb <- utils::txtProgressBar(min = 0, max = nvar, style = 3)
+    surv_data <- data.frame(time = data[, time], event = data[, event])
+    res <- list()
+    for (i in 1:nvar){
+        var_i <- variables[i]
+        surv_data$var <- data[, var_i]
+        max_stat_i <- maxstat::maxstat.test(survival::Surv(time, event) ~ var, data = surv_data,
+                                            smethod = "LogRank", pmethod="none",
+                                            minprop = minprop, maxprop = 1-minprop,
+                                            alpha = alpha)
+        res[[var_i]] <- max_stat_i
+        if(progressbar) utils::setTxtProgressBar(pb, i)
+    }
+    colnames(surv_data) <- c(time, event)
+    res$data <- cbind.data.frame(surv_data[, 1:2, drop = FALSE], data[, variables, drop = FALSE])
+    res$minprop <- minprop
+    if(!is.null(not_numeric_vars)) res$not_numeric <- data[, not_numeric_vars, drop = FALSE]
+    res <- structure(res, class = c("list", "surv_cutpoint"))
+    res$cutpoint <- summary(res)
+    res
+}
+
+
+
+# codes from https://github.com/kassambara/survminer/blob/e23fa1229c4e7624739d54d7b76885950ca61f74/R/surv_cutpoint.R
+# Get not numeric columns in a data.frame
+.get_not_numeric_vars <- function(data_frame){
+    is_numeric <- sapply(data_frame, is.numeric)
+    if(sum(!is_numeric) == 0) res = NULL
+    else res <- colnames(data_frame[, !is_numeric, drop = FALSE])
+    res
+}

@@ -1,7 +1,7 @@
 globalVariables(c("FDR", "P.Value", "PC1", "PC2", "PValue", "adj.P.Val", "gene_name",
                   "log2FoldChange", "logFC", "gene_id","mor", "p_value", "reg", "score",
-                  "std", "weight", "y","group", "value",".data", "id2",
-                  "modifyList", "na.omit", "pvalue", "sample_name", "stat", "type"))
+                  "std", "weight", "y","group", "value",".data", "id2","OS", "OS.time",
+                  "modifyList", "na.omit", "pvalue", "sample_name", "stat", "type","alpha"))
 
 
 

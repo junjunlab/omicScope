@@ -497,7 +497,7 @@ ucscZenaToObj <- function(gtf_anno = NULL,
 
     ph$id2 <- nm
     ph <- ph |>
-        dplyr::mutate(group = ifelse(id2 >= 10,"normal","tumor"),
+        dplyr::mutate(group = ifelse(id2 >= 10,"Normal","Tumor"),
                       batch = "TCGA")
 
     # ==========================================================================
@@ -542,7 +542,7 @@ ucscZenaToObj <- function(gtf_anno = NULL,
         rowData <- rowData[gov,]
 
         gtex.ph <- data.frame(sample = colnames(gtex.ct)) |>
-            dplyr::mutate(group = "normal",batch = "GTEX")
+            dplyr::mutate(group = "Normal",batch = "GTEX")
         rownames(gtex.ph) <- gtex.ph$sample
 
         mt2 <- dplyr::bind_rows(mt, gtex.ph)

@@ -937,3 +937,569 @@ setMethod("correlation_plot",
 )
 
 
+
+
+
+#' Create Survival Plots for Selected Genes
+#'
+#' @description
+#' This method generates Kaplan-Meier survival plots for selected genes using
+#' expression data from an \code{omicscope} object. The function performs
+#' optimal cutpoint analysis or median-based stratification to divide samples
+#' into high and low expression groups, then creates survival curves with
+#' statistical comparisons.
+#'
+#' @param object An \code{omicscope} object containing normalized expression data
+#'   and survival information (OS.time and OS columns required in colData)
+#' @param selected_gene Character vector of gene names to analyze. Gene names
+#'   must match those in the normalized data. This parameter is required.
+#' @param add_confidence_interval Logical indicating whether to add confidence
+#'   intervals to survival curves. Default is TRUE.
+#' @param add_risk_table Logical indicating whether to add a risk table below
+#'   the survival plot. Default is FALSE. When TRUE, displays both number at
+#'   risk and cumulative events.
+#' @param curve_col Character vector of length 2 specifying colors for high
+#'   and low expression groups. Default is c("red", "black").
+#' @param ncol Integer specifying number of columns for multi-plot layout when
+#'   multiple genes are analyzed. Default is NULL (automatic layout).
+#' @param nrow Integer specifying number of rows for multi-plot layout when
+#'   multiple genes are analyzed. Default is NULL (automatic layout).
+#' @param cut_point Character string specifying the method for determining
+#'   expression cutpoint. Options are "auto" (optimal cutpoint using
+#'   \code{surv_cutpoint}) or "median" (median expression value). Default is "auto".
+#' @param ... Additional arguments (currently not used)
+#'
+#' @return A ggplot object (single gene) or combined plot grid (multiple genes)
+#'   showing Kaplan-Meier survival curves with log-rank test p-values.
+#'
+#' @details
+#' The function performs comprehensive survival analysis workflow:
+#'
+#' \subsection{Data Preprocessing}{
+#'   \itemize{
+#'     \item Filters metadata to tumor samples only
+#'     \item Removes samples with missing survival data (OS.time, OS)
+#'     \item Extracts normalized expression data for selected genes
+#'     \item Joins expression and survival data
+#'   }
+#' }
+#'
+#' \subsection{Cutpoint Determination}{
+#'   \itemize{
+#'     \item \strong{Auto mode}: Uses \code{survminer::surv_cutpoint()} to find
+#'       the optimal expression threshold that maximally separates survival outcomes
+#'     \item \strong{Median mode}: Uses median expression as the cutpoint
+#'     \item Classifies samples as "Gene-high" or "Gene-low" based on cutpoint
+#'   }
+#' }
+#'
+#' \subsection{Statistical Analysis}{
+#'   \itemize{
+#'     \item Performs log-rank test to compare survival between groups
+#'     \item Converts survival time from days to months (divides by 30)
+#'     \item Fits Kaplan-Meier survival curves using \code{survfit2()}
+#'   }
+#' }
+#'
+#' \subsection{Visualization Features}{
+#'   \itemize{
+#'     \item Publication-ready survival curves with customizable colors
+#'     \item Optional confidence intervals with transparency
+#'     \item Log-rank p-value annotation in top-right corner
+#'     \item Optional risk table showing n.risk and cumulative events
+#'     \item Multi-gene plots arranged in customizable grid layout
+#'   }
+#' }
+#'
+#' @section Required Data Structure:
+#' The \code{omicscope} object must contain:
+#' \itemize{
+#'   \item \strong{Normalized expression data}: Available via \code{@normalizedData} slot
+#'   \item \strong{Survival data}: \code{OS.time} and \code{OS} columns in \code{colData}
+#'   \item \strong{Sample groups}: \code{group} column with "tumor" samples
+#'   \item \strong{Gene annotation}: Gene names must match \code{selected_gene} parameter
+#' }
+#'
+#'
+#' @examples
+#' \dontrun{
+#' # Single gene analysis with default settings
+#' surv_plot(obj, selected_gene = "TP53")
+#'
+#' # Multiple genes with confidence intervals
+#' surv_plot(obj,
+#'           selected_gene = c("METTL5", "METTL16"),
+#'           add_confidence_interval = TRUE)
+#'
+#' # Custom visualization options
+#' surv_plot(obj,
+#'           selected_gene = c("EGFR", "KRAS", "ALK", "ROS1"),
+#'           add_confidence_interval = FALSE,
+#'           add_risk_table = TRUE,
+#'           curve_col = c("blue", "orange"),
+#'           ncol = 2, nrow = 2,
+#'           cut_point = "median")
+#'
+#' # Publication-ready plot with risk table
+#' surv_plot(obj,
+#'           selected_gene = "PD1",
+#'           add_confidence_interval = TRUE,
+#'           add_risk_table = TRUE,
+#'           curve_col = c("#E31A1C", "#1F78B4"))
+#' }
+#'
+#'
+#'
+#'
+#' @docType methods
+#' @rdname surv_plot
+#' @importFrom cowplot plot_grid
+#' @importFrom dplyr filter select inner_join mutate
+#' @importFrom tidyr pivot_longer
+#' @importFrom stats na.omit median
+#' @importFrom ggplot2 theme element_text xlab ylab scale_color_manual scale_fill_manual
+#'
+#'
+#' @export
+setGeneric("surv_plot",function(object,...){
+    standardGeneric("surv_plot")
+})
+
+
+
+
+
+
+#' @rdname surv_plot
+#' @export
+setMethod("surv_plot",
+          signature(object = "omicscope"),
+          function(object,
+                   selected_gene = NULL,
+                   add_confidence_interval = TRUE,
+                   add_risk_table = FALSE,
+                   curve_col = c("red","black"),
+                   ncol = NULL, nrow = NULL,
+                   cut_point = c("auto","median")) {
+              cut_point <- match.arg(cut_point, choices = c("auto","median"))
+              # ==================================================================
+              # check os data
+              # metadata
+              coldata <- data.frame(SummarizedExperiment::colData(object),
+                                    check.names = FALSE,
+                                    stringsAsFactors = TRUE) |>
+                  dplyr::filter(group == "Tumor") |>
+                  dplyr::select(sample,OS.time,OS) |>
+                  stats::na.omit()
+
+              if(!all(c("OS.time","OS") %in% colnames(coldata))){
+                  stop("OS.time and OS columns can't be found in metadata,
+                   please supply survive data!")
+              }
+
+              # get normalized counts
+              ck <- is.null(object@normalizedData)
+
+              if(ck){
+                  stop("Please run get_normalized_data function first!")
+              }
+
+              norm.dt <- object@normalizedData
+
+              # check gene
+              if(!is.null(selected_gene)){
+                  norm.dt.lg <- subset(norm.dt, gene_name %in% selected_gene) |>
+                      tidyr::pivot_longer(cols = colnames(norm.dt)[1:(ncol(norm.dt) - 3)],
+                                          names_to = "sample",
+                                          values_to = "value") |>
+                      dplyr::filter(sample %in% coldata$sample) |>
+                      dplyr::inner_join(y = coldata,by = "sample")
+
+              }else{
+                  stop("Please supply gene names to plot!")
+              }
+
+              # ==================================================================
+              # loop plot
+              # x = 1
+              lapply(seq_along(selected_gene),function(x){
+                  tmp <- subset(norm.dt.lg, gene_name == selected_gene[x])
+
+                  # check cut_point method
+
+                  if(cut_point == "auto"){
+                      # get best cutoff
+                      cut.val <- surv_cutpoint(tmp,
+                                               time = "OS.time",
+                                               event = "OS",
+                                               variables = c("value"))
+
+                      cut.val <- cut.val$cutpoint$cutpoint
+                  }else{
+                      cut.val <- stats::median(tmp$value)
+                  }
+
+
+                  # add high low group
+                  tmp <- tmp |>
+                      dplyr::mutate(Group = ifelse(value >= cut.val,
+                                                   paste0(selected_gene[x],"-high"),
+                                                   paste0(selected_gene[x],"-low")),
+                                    OS.time = OS.time/30)
+
+                  fit <- ggsurvfit::survfit2(
+                      survival::Surv(`OS.time`,OS) ~ Group, data = tmp)
+
+                  # plot
+                  p <- ggsurvfit::ggsurvfit(fit)
+
+                  if(add_confidence_interval == TRUE){
+                      p <- p + ggsurvfit::add_confidence_interval()
+                  }
+
+                  p <- p +
+                      ggsurvfit::scale_ggsurvfit() +
+                      ggsurvfit::add_pvalue(caption = "Log-rank {p.value}",
+                                            location  = "annotation",
+                                            x = Inf,y = 0.98,hjust = 1) +
+                      theme(axis.text = element_text(colour = "black"),
+                            panel.grid = element_blank(),
+                            legend.position = "right") +
+                      xlab("Time (months)") +
+                      ylab("Survival probability") +
+                      scale_color_manual(values = curve_col) +
+                      scale_fill_manual(values = curve_col)
+
+                  # add risk table
+                  if(add_risk_table == TRUE){
+                      p <- p +
+                          ggsurvfit::add_risktable(risktable_stats = "{n.risk} ({cum.event})")
+                  }
+
+                  return(p)
+              }) -> plist
+
+              # combine
+              cowplot::plot_grid(plotlist = plist,ncol = ncol,nrow = nrow)
+
+          })
+
+
+
+
+
+
+#' Create Box or Violin Plots for Selected Genes
+#'
+#' This function generates box plots or violin plots to visualize the expression
+#' levels of selected genes across different groups (e.g., Normal vs Tumor).
+#' Statistical comparisons between groups are performed using the Wilcoxon test.
+#'
+#' @param object An object of class \code{omicscope} containing normalized
+#'   expression data and sample metadata.
+#' @param selected_gene Character vector specifying the gene names to plot.
+#'   Required parameter. Gene names should match those in the normalized data.
+#' @param fill_var Character string specifying the column name in the metadata
+#'   to use for grouping and coloring. Default is \code{"group"}.
+#' @param fill_col Character vector of colors to use for filling the groups.
+#'   Default is \code{c("grey", "red")}.
+#' @param type Character string specifying the plot type. Options are \code{"box"}
+#'   for box plots or \code{"violin"} for violin plots. Default is \code{"box"}.
+#' @param box_width Numeric value specifying the width of boxes in box plots.
+#'   Default is \code{0.75}. Only applicable when \code{type = "box"}.
+#' @param error_bar_width Numeric value specifying the width of error bars in
+#'   box plots. Default is \code{0.25}. Only applicable when \code{type = "box"}.
+#' @param ... Additional arguments (currently not used).
+#'
+#'
+#' @return A \code{ggplot2} object displaying the gene expression plot with
+#'   statistical comparisons.
+#'
+#' @details
+#' The function performs the following steps:
+#' \itemize{
+#'   \item Extracts normalized expression data from the \code{omicscope} object
+#'   \item Filters data for the specified genes
+#'   \item Transforms expression values using log2(value + 1)
+#'   \item Creates either box plots or violin plots based on the \code{type} parameter
+#'   \item Adds statistical comparisons using Wilcoxon test (p-values shown as significance symbols)
+#' }
+#'
+#' The function requires that normalized data has been generated first using the
+#' \code{get_normalized_data} function.
+#'
+#' @examples
+#' \dontrun{
+#' # Create box plots for selected genes
+#' gene_boxViolin_plot(object = obj,
+#'                     selected_gene = c("METTL5", "METTL16", "METTL3",
+#'                                       "METTL14", "ACTB", "GAPDH"))
+#'
+#' # Create violin plots
+#' gene_boxViolin_plot(object = obj,
+#'                     selected_gene = c("METTL5", "METTL16", "METTL3",
+#'                                       "METTL14", "ACTB", "GAPDH"),
+#'                     type = "violin")
+#'
+#' # Customize colors and box width
+#' gene_boxViolin_plot(object = obj,
+#'                     selected_gene = c("ACTB", "GAPDH"),
+#'                     fill_col = c("#0073C2FF", "#EFC000FF"),
+#'                     box_width = 0.5)
+#' }
+#'
+#'
+#' @import ggplot2
+#' @importFrom SummarizedExperiment colData
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr inner_join
+#'
+#'
+#' @export
+setGeneric("gene_boxViolin_plot",function(object,...){
+    standardGeneric("gene_boxViolin_plot")
+})
+
+
+
+
+
+
+
+#' @rdname gene_boxViolin_plot
+#' @export
+setMethod("gene_boxViolin_plot",
+          signature(object = "omicscope"),
+          function(object,
+                   selected_gene = NULL,
+                   fill_var = "group",
+                   fill_col = c("grey","red"),
+                   type = c("box","violin"),
+                   box_width = 0.75,
+                   error_bar_width = 0.25) {
+              type <- match.arg(type, choices = c("box","violin"))
+              # ==================================================================
+              # metadata
+              coldata <- data.frame(SummarizedExperiment::colData(object),
+                                    check.names = FALSE,
+                                    stringsAsFactors = TRUE)
+
+              # get normalized counts
+              ck <- is.null(object@normalizedData)
+
+              if(ck){
+                  stop("Please run get_normalized_data function first!")
+              }
+
+              norm.dt <- object@normalizedData
+
+              # check gene
+              if(!is.null(selected_gene)){
+                  norm.dt.lg <- subset(norm.dt, gene_name %in% selected_gene) |>
+                      tidyr::pivot_longer(cols = colnames(norm.dt)[1:(ncol(norm.dt) - 3)],
+                                          names_to = "sample",
+                                          values_to = "value") |>
+                      dplyr::inner_join(y = coldata,by = "sample")
+
+              }else{
+                  stop("Please supply gene names to plot!")
+              }
+
+              # ==================================================================
+              # plot
+              norm.dt.lg$group <- factor(norm.dt.lg$group, levels = c("Normal","Tumor"))
+
+              p <-
+                  ggplot(norm.dt.lg,
+                         aes(x = gene_name,y = log2(value + 1),fill = .data[[fill_var]]))
+
+              # check type
+              if(type == "box"){
+                  p <- p +
+                      stat_boxplot(geom = "errorbar",width = error_bar_width,
+                                   position = position_dodge(width = 0.9)) +
+                      geom_boxplot(position = position_dodge(width = 0.9),
+                                   width = box_width,
+                                   outlier.alpha = 0.5,
+                                   outlier.color = "grey")
+              }else{
+                  p <- p + geom_violin(draw_quantiles = c(0.5))
+
+              }
+
+              p <- p +
+                  theme_bw() +
+                  theme(axis.text = element_text(colour = "black"),
+                        axis.text.x = element_text(face = "italic"),
+                        panel.grid = element_blank()) +
+                  scale_fill_manual(values = fill_col,name = "Group") +
+                  xlab("Gene names") + ylab("Log2 (expression+1)") +
+                  ggpubr::stat_compare_means(aes(group = .data[[fill_var]]),
+                                             label = "p.signif",
+                                             method = "wilcox.test")
+
+              return(p)
+          })
+
+
+
+
+
+#' Create Correlation Scatter Plots Between Two Genes
+#'
+#' This function generates scatter plots to visualize the correlation between
+#' expression levels of two selected genes. Pearson correlation coefficients
+#' and p-values are calculated and displayed on the plots. Plots can be
+#' stratified by sample groups (Normal, Tumor, or both).
+#'
+#' @param object An object of class \code{omicscope} containing normalized
+#'   expression data and sample metadata.
+#' @param gene_1 Character string specifying the first gene name (x-axis).
+#'   Required parameter. Must exist in the normalized data.
+#' @param gene_2 Character string specifying the second gene name (y-axis).
+#'   Required parameter. Must exist in the normalized data.
+#' @param point_col Character string specifying the color of scatter points.
+#'   Default is \code{"#F97A00"} (orange).
+#' @param line_col Character string specifying the color of the regression line.
+#'   Default is \code{"#205781"} (blue).
+#' @param point_size Numeric value specifying the size of scatter points.
+#'   Default is \code{1}.
+#' @param selected_group Character string specifying which sample group(s) to
+#'   plot. Options are \code{"Tumor"} (tumor samples only), \code{"Normal"}
+#'   (normal samples only), or \code{"both"} (separate facets for each group).
+#'   Default is \code{"Tumor"}.
+#' @param ... Additional arguments (currently not used).
+#'
+#'
+#' @return A \code{ggplot2} object displaying the gene correlation scatter plot(s)
+#'   with linear regression lines and Pearson correlation statistics.
+#'
+#' @details
+#' The function workflow includes:
+#' \itemize{
+#'   \item Extracts normalized expression data from the \code{omicscope} object
+#'   \item Filters samples based on the \code{selected_group} parameter
+#'   \item Extracts expression values for the two specified genes
+#'   \item Creates scatter plots with linear regression lines (using \code{lm} method)
+#'   \item Calculates and displays Pearson correlation coefficient with p-value
+#'   \item When \code{selected_group = "both"}, creates faceted plots for Normal and Tumor groups
+#' }
+#'
+#' The function requires that normalized data has been generated first using the
+#' \code{get_normalized_data} function. Expression values are used in their
+#' original scale (not log-transformed) for correlation analysis.
+#'
+#' @note
+#' \itemize{
+#'   \item Gene names are case-sensitive and must match exactly with those in the data
+#'   \item The aspect ratio is fixed at 1:1 for better visual interpretation
+#'   \item Correlation method used is Pearson's correlation coefficient
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Correlation plot for tumor samples only
+#' gene_cor_plot(obj,
+#'               gene_1 = "METTL3",
+#'               gene_2 = "METTL5")
+#'
+#' # Correlation plot comparing both Normal and Tumor groups
+#' gene_cor_plot(obj,
+#'               gene_1 = "METTL3",
+#'               gene_2 = "METTL14",
+#'               selected_group = "both")
+#'
+#' # Customize colors and point size
+#' gene_cor_plot(obj,
+#'               gene_1 = "ACTB",
+#'               gene_2 = "GAPDH",
+#'               point_col = "#E64B35FF",
+#'               line_col = "#4DBBD5FF",
+#'               point_size = 2,
+#'               selected_group = "Normal")
+#' }
+#'
+#'
+#'
+#'
+#' @import ggplot2
+#' @importFrom SummarizedExperiment colData
+#' @importFrom dplyr inner_join
+#'
+#'
+#' @export
+setGeneric("gene_cor_plot",function(object,...){
+    standardGeneric("gene_cor_plot")
+})
+
+
+
+
+
+
+
+#' @rdname gene_cor_plot
+#' @export
+setMethod("gene_cor_plot",
+          signature(object = "omicscope"),
+          function(object,
+                   gene_1 = NULL,
+                   gene_2 = NULL,
+                   point_col = "#F97A00",
+                   line_col = "#205781",
+                   point_size = 1,
+                   selected_group = c("Tumor","Normal","both")) {
+              selected_group <- match.arg(selected_group, choices = c("Tumor","Normal","both"))
+              # ==================================================================
+              # metadata
+              coldata <- data.frame(SummarizedExperiment::colData(object),
+                                    check.names = FALSE,
+                                    stringsAsFactors = TRUE)
+
+              # check group
+              if(selected_group != "both"){
+                  coldata <- subset(coldata, group == selected_group)
+              }
+
+              # get normalized counts
+              ck <- is.null(object@normalizedData)
+
+              if(ck){
+                  stop("Please run get_normalized_data function first!")
+              }
+
+              norm.dt <- object@normalizedData
+
+              # check gene
+              if(!is.null(gene_1) && !is.null(gene_2)){
+                  norm.dt.lg <- subset(norm.dt, gene_name %in% c(gene_1,gene_2))
+                  rownames(norm.dt.lg) <- norm.dt.lg$gene_name
+                  norm.dt.lg <- norm.dt.lg[,1:(ncol(norm.dt) - 3)] |> t() |>
+                      data.frame(check.names = FALSE)
+
+                  norm.dt.lg$sample <- rownames(norm.dt.lg)
+
+                  norm.dt.lg <- norm.dt.lg |>
+                      dplyr::inner_join(y = coldata, by = "sample")
+              }else{
+                  stop("Please supply gene_1 and gene_2 to plot!")
+              }
+
+              # ==================================================================
+              # plot
+
+              ggplot(norm.dt.lg,
+                     aes(x = .data[[gene_1]],y = .data[[gene_2]])) +
+                  geom_point(color = point_col, size = point_size) +
+                  geom_smooth(method = "lm", color = line_col) +
+                  facet_wrap(~group) +
+                  theme_bw() +
+                  theme(axis.text = element_text(colour = "black"),
+                        axis.title = element_text(face = "italic"),
+                        aspect.ratio = 1,
+                        strip.text = element_text(face = "bold",size = rel(1)),
+                        panel.grid = element_blank()) +
+                  xlab(gene_1) + ylab(gene_2) +
+                  ggpubr::stat_cor()
+
+          })

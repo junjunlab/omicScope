@@ -49,5 +49,9 @@ Suggests:
     ggrepel,
     knitr,
     OmnipathR,
-    rmarkdown
+    rmarkdown,
+    ggsurvfit,
+    survival,
+    maxstat,
+    ggpubr
 VignetteBuilder: knitr
