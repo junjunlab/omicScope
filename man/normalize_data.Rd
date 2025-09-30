@@ -7,7 +7,7 @@
 \usage{
 normalize_data(object, ...)
 
-\S4method{normalize_data}{omicscope}(object, norm_type = c("tpm", "rpkm", "log1p"))
+\S4method{normalize_data}{omicscope}(object, norm_type = c("tpm", "rpkm", "log1p", "cpm"))
 }
 \arguments{
 \item{object}{An \code{omicscope} object containing expression count data}
@@ -20,6 +20,7 @@ Must be one of:
 \item \code{"tpm"}: Transcripts Per Million normalization
 \item \code{"rpkm"}: Reads Per Kilobase Million normalization
 \item \code{"log1p"}: CPM followed by log1p transformation
+\item \code{"cpm"}: Counts per million transformation
 }}
 }
 \value{

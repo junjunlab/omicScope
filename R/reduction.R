@@ -132,6 +132,10 @@ setMethod("run_reduction",
                   reduc <- do.call(umap::umap,
                                    modifyList(list(d = t(asy.zs)),
                                               umapParams))
+
+                  message("Showing UMAP default parameters:\n")
+                  print(umap::umap.defaults)
+
               }else if(reduction == "tsne"){
                   if (!requireNamespace("Rtsne", quietly = TRUE)) {
                       stop("Package 'Rtsne' is required for t-SNE reduction.\n",
@@ -142,6 +146,8 @@ setMethod("run_reduction",
                   reduc <- do.call(Rtsne::Rtsne,
                                    modifyList(list(X = t(asy.zs)),
                                               tsneParams))
+
+                  reduc$rowname <- rownames(t(asy.zs))
               }
 
 

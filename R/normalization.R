@@ -12,6 +12,7 @@
 #'     \item \code{"tpm"}: Transcripts Per Million normalization
 #'     \item \code{"rpkm"}: Reads Per Kilobase Million normalization
 #'     \item \code{"log1p"}: CPM followed by log1p transformation
+#'     \item \code{"cpm"}: Counts per million transformation
 #'   }
 #' @param ... Additional arguments (currently not used)
 #'
@@ -57,8 +58,8 @@ setGeneric("normalize_data",function(object,...){
 setMethod("normalize_data",
           signature(object = "omicscope"),
           function(object,
-                   norm_type = c("tpm","rpkm","log1p")){
-              norm_type <- match.arg(norm_type,choices = c("tpm","rpkm","log1p"))
+                   norm_type = c("tpm","rpkm","log1p","cpm")){
+              norm_type <- match.arg(norm_type,choices = c("tpm","rpkm","log1p","cpm"))
               # ================================================================
               # get counts
               count <- SummarizedExperiment::assay(object)
@@ -82,6 +83,8 @@ setMethod("normalize_data",
               }else if(norm_type == "log1p"){
                   cpm <- t(t(as.matrix(count))/colSums(as.matrix(count))*10^4)
                   norm <- log1p(cpm + 1)
+              }else if(norm_type == "cpm"){
+                  norm <- t(t(as.matrix(count))/colSums(as.matrix(count))*10^4)
               }
 
               norm <- methods::as(norm, "dgCMatrix")

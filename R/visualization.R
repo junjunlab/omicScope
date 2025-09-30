@@ -77,6 +77,11 @@ setMethod("dim_plot",
                        paste(names(object@reduction), collapse = ", "))
               }
 
+              # metadata
+              coldata <- data.frame(SummarizedExperiment::colData(object),
+                                    check.names = FALSE,
+                                    stringsAsFactors = T)
+
               # do reduction
               if(reduction == "pca"){
                   data <- object@reduction[["pca"]]
@@ -85,21 +90,37 @@ setMethod("dim_plot",
                   pc_scores <- data.frame(data$x, check.names = FALSE)
                   pc_scores$sample <- rownames(pc_scores)
 
-                  # metadata
-                  coldata <- data.frame(SummarizedExperiment::colData(object),
-                                        check.names = FALSE,
-                                        stringsAsFactors = T)
-
                   pc_scores <- coldata |>
                       dplyr::inner_join(y = pc_scores, by = "sample")
 
                   variance <- data$sdev^2
                   variance_percent <- variance / sum(variance) * 100
 
+                  xlb <- paste0("PC 1 ","(",round(variance_percent[1],digits = 2),"%)")
+                  ylb <- paste0("Dim 2 ","(",round(variance_percent[2],digits = 2),"%)")
               }else if(reduction == "umap"){
+                  data <- object@reduction[["umap"]]
 
+                  pc_scores <- data.frame(data$layout, check.names = FALSE)
+                  colnames(pc_scores) <- c("PC1","PC2")
+                  pc_scores$sample <- rownames(pc_scores)
+
+                  pc_scores <- coldata |>
+                      dplyr::inner_join(y = pc_scores, by = "sample")
+
+                  xlb <- "UMAP 1"; ylb <- "UMAP 2"
               }else if(reduction == "tsne"){
+                  data <- object@reduction[["tsne"]]
 
+                  pc_scores <- data.frame(data$Y, check.names = FALSE)
+
+                  colnames(pc_scores) <- c("PC1","PC2")
+                  pc_scores$sample <- data$rowname
+
+                  pc_scores <- coldata |>
+                      dplyr::inner_join(y = pc_scores, by = "sample")
+
+                  xlb <- "TSNE 1"; ylb <- "TSNE 2"
               }
 
               # plot
@@ -113,8 +134,8 @@ setMethod("dim_plot",
                         aspect.ratio = 1,
                         axis.text = element_text(colour = "black")) +
                   # scale_color_brewer(palette = "Set2") +
-                  xlab(paste0("Dim 1 ","(",round(variance_percent[1],digits = 2),"%)")) +
-                  ylab(paste0("Dim 2 ","(",round(variance_percent[2],digits = 2),"%)")) +
+                  xlab(xlb) +
+                  ylab(ylb) +
                   guides(color = guide_legend(override.aes = list(size = 4)))
           }
 )
