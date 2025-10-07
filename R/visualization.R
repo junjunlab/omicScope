@@ -97,7 +97,7 @@ setMethod("dim_plot",
                   variance_percent <- variance / sum(variance) * 100
 
                   xlb <- paste0("PC 1 ","(",round(variance_percent[1],digits = 2),"%)")
-                  ylb <- paste0("Dim 2 ","(",round(variance_percent[2],digits = 2),"%)")
+                  ylb <- paste0("PC 2 ","(",round(variance_percent[2],digits = 2),"%)")
               }else if(reduction == "umap"){
                   data <- object@reduction[["umap"]]
 
