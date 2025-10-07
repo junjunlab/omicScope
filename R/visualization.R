@@ -1231,6 +1231,17 @@ setMethod("surv_plot",
 #'   Default is \code{0.75}. Only applicable when \code{type = "box"}.
 #' @param error_bar_width Numeric value specifying the width of error bars in
 #'   box plots. Default is \code{0.25}. Only applicable when \code{type = "box"}.
+#' @param add_point Logical value indicating whether to add individual data points
+#'   to the plot. When \code{TRUE}, points are displayed using jitter to avoid
+#'   overplotting. Default is \code{TRUE}.
+#' @param jitter.width Numeric value controlling the amount of horizontal jitter
+#'   for individual points. Higher values increase the spread of points.
+#'   Default is \code{0.3}. Only used when \code{add_point = TRUE}.
+#' @param point_col Character string specifying the color of individual data points.
+#'   Default is \code{"grey30"}. Only used when \code{add_point = TRUE}.
+#' @param point_alpha Numeric value between 0 and 1 controlling the transparency
+#'   of individual data points. Lower values make points more transparent.
+#'   Default is \code{0.8}. Only used when \code{add_point = TRUE}.
 #' @param ... Additional arguments (currently not used).
 #'
 #'
@@ -1298,7 +1309,9 @@ setMethod("gene_boxViolin_plot",
                    fill_col = c("grey","red"),
                    type = c("box","violin"),
                    box_width = 0.75,
-                   error_bar_width = 0.25) {
+                   error_bar_width = 0.25,
+                   add_point = TRUE,
+                   jitter.width = 0.3, point_col = "grey30", point_alpha = 0.8) {
               type <- match.arg(type, choices = c("box","violin"))
               # ==================================================================
               # metadata
@@ -1347,6 +1360,13 @@ setMethod("gene_boxViolin_plot",
               }else{
                   p <- p + geom_violin(draw_quantiles = c(0.5))
 
+              }
+
+              # add point
+              if(add_point == TRUE){
+                  p <- p +
+                      geom_jitter(position = position_jitterdodge(jitter.width = jitter.width,dodge.width = 0.9),
+                                  color = point_col,alpha = point_alpha)
               }
 
               p <- p +
