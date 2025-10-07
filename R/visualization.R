@@ -1134,7 +1134,8 @@ setMethod("surv_plot",
                                           names_to = "sample",
                                           values_to = "value") |>
                       dplyr::filter(sample %in% coldata$sample) |>
-                      dplyr::inner_join(y = coldata,by = "sample")
+                      dplyr::inner_join(y = coldata,by = "sample") |>
+                      unique()
 
               }else{
                   stop("Please supply gene names to plot!")

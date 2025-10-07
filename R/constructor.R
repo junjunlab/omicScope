@@ -154,20 +154,25 @@ omicscope <- function(gtfAnno = NULL,
     # load gtf
     if(!is.null(gtfAnno)){
         if(!exists("rowData.rda")){
-            gtf <- rtracklayer::import.gff(gtfAnno, format = "gtf") |>
-                data.frame(check.names = FALSE)
+            gtf <- rtracklayer::import.gff(gtfAnno, format = "gtf")
+
+            gtf.tmp <- gtf |> data.frame(check.names = FALSE)
 
             # feature
-            if("gene_id" %in% colnames(gtf)){
-                if(!("gene_name" %in% colnames(gtf))){
-                    gtf$gene_name <- gtf$gene_id
+            if("gene_id" %in% colnames(gtf.tmp)){
+                if(!("gene_name" %in% colnames(gtf.tmp))){
+                    gtf.tmp$gene_name <- gtf.tmp$gene_id
                 }
 
-                if(!("gene_biotype" %in% colnames(gtf))){
-                    gtf$gene_biotype <- "gene"
+                if(!("gene_biotype" %in% colnames(gtf.tmp))){
+                    if("gene_type" %in% colnames(gtf.tmp)){
+                        gtf.tmp$gene_biotype <- gtf.tmp$gene_type
+                    }else{
+                        gtf.tmp$gene_biotype <- "gene"
+                    }
                 }
 
-                rowData <- gtf[,c("gene_id","gene_name","gene_biotype")] |>
+                rowData <- gtf.tmp[,c("gene_id","gene_name","gene_biotype")] |>
                     dplyr::distinct()
             }else{
                 stop("gene_id column not in your gtf file!")
@@ -455,20 +460,25 @@ ucscZenaToObj <- function(gtf_anno = NULL,
     # load gtf
     if(!is.null(gtf_anno)){
         if(!exists("rowData.rda")){
-            gtf <- rtracklayer::import.gff(gtf_anno, format = "gtf") |>
-                data.frame(check.names = FALSE)
+            gtf <- rtracklayer::import.gff(gtf_anno, format = "gtf")
+
+            gtf.tmp <- gtf |> data.frame(check.names = FALSE)
 
             # feature
-            if("gene_id" %in% colnames(gtf)){
-                if(!("gene_name" %in% colnames(gtf))){
-                    gtf$gene_name <- gtf$gene_id
+            if("gene_id" %in% colnames(gtf.tmp)){
+                if(!("gene_name" %in% colnames(gtf.tmp))){
+                    gtf.tmp$gene_name <- gtf.tmp$gene_id
                 }
 
-                if(!("gene_biotype" %in% colnames(gtf))){
-                    gtf$gene_biotype <- "gene"
+                if(!("gene_biotype" %in% colnames(gtf.tmp))){
+                    if("gene_type" %in% colnames(gtf.tmp)){
+                        gtf.tmp$gene_biotype <- gtf.tmp$gene_type
+                    }else{
+                        gtf.tmp$gene_biotype <- "gene"
+                    }
                 }
 
-                rowData <- gtf[,c("gene_id","gene_name","gene_biotype")] |>
+                rowData <- gtf.tmp[,c("gene_id","gene_name","gene_biotype")] |>
                     dplyr::distinct()
             }else{
                 stop("gene_id column not in your gtf file!")
@@ -592,6 +602,237 @@ ucscZenaToObj <- function(gtf_anno = NULL,
     # sce obj
     sce <- SummarizedExperiment::SummarizedExperiment(
         assays = list(counts = methods::as(as.matrix(ct2), "dgCMatrix")),
+        rowData = S4Vectors::DataFrame(rowData,
+                                       row.names = rownames(rowData)),
+        colData = S4Vectors::DataFrame(mt2,
+                                       row.names = rownames(mt2))
+    )
+
+    # return
+    return(.omicscope(sce,
+                      gtfAnno = gtf,
+                      gtfPath = gtf_anno))
+}
+
+
+
+
+
+
+
+#' Convert TCGAbiolinks Object to OmicScope Object
+#'
+#' @description
+#' This function converts a TCGAbiolinks SummarizedExperiment object into an
+#' OmicScope object format. It processes TCGA RNA-seq data and optionally
+#' integrates GTEx normal tissue data for comparative analysis. The function
+#' handles metadata formatting, counts matrix extraction, survival data
+#' processing, and gene annotation.
+#'
+#' @param gtf_anno Character string. Path to a GTF annotation file. Required
+#'   when \code{gtex_counts_data} is provided. The GTF file should contain
+#'   gene_id, gene_name, and gene_biotype (or gene_type) columns. Default is NULL.
+#' @param tcgabiolinks_obj A SummarizedExperiment object obtained from
+#'   TCGAbiolinks (e.g., using \code{GDCprepare()}). Must contain:
+#'   \itemize{
+#'     \item colData: sample metadata including tissue_type, sample, barcode,
+#'       vital_status, days_to_death, days_to_last_follow_up
+#'     \item assay "unstranded": raw counts matrix
+#'     \item assay "tpm_unstrand": normalized TPM values (optional)
+#'     \item rowData: gene annotation with gene_id, gene_name, gene_type
+#'   }
+#' @param gtex_counts_data Character string or NULL. Path to a GTEx counts
+#'   data file (tab-separated format with gene names in columns 1-2 and sample
+#'   counts in subsequent columns). When provided, GTEx normal tissue data will
+#'   be integrated with TCGA data. Default is NULL.
+#'
+#' @return An OmicScope object (SummarizedExperiment) containing:
+#'   \item{assays}{
+#'     \itemize{
+#'       \item counts: Combined sparse matrix (dgCMatrix) of TCGA and GTEx
+#'         counts (if GTEx provided)
+#'       \item normed_counts: TPM normalized counts (only when GTEx not provided)
+#'     }
+#'   }
+#'   \item{colData}{
+#'     Sample metadata including:
+#'     \itemize{
+#'       \item group: Tissue type (Tumor/Normal)
+#'       \item batch: Data source (TCGA/GTEX)
+#'       \item group2: Combined batch-group identifier
+#'       \item OS.time: Overall survival time in days
+#'       \item OS: Overall survival status (1=dead, 0=alive)
+#'       \item All original TCGA metadata columns
+#'     }
+#'   }
+#'   \item{rowData}{Gene annotation with gene_id, gene_name, gene_biotype}
+#'   \item{gtfAnno}{GenomicRanges object from GTF file (empty if GTEx not used)}
+#'
+#'
+#'
+#'
+#' @examples
+#' \dontrun{
+#' # Example 1: Convert TCGA data only
+#' library(TCGAbiolinks)
+#'
+#' # Download and prepare TCGA data
+#' query <- GDCquery(
+#'   project = "TCGA-LUAD",
+#'   data.category = "Transcriptome Profiling",
+#'   data.type = "Gene Expression Quantification",
+#'   workflow.type = "STAR - Counts"
+#' )
+#' GDCdownload(query)
+#' tcga_data <- GDCprepare(query)
+#'
+#' # Convert to OmicScope object
+#' omics_obj <- TCGAbiolinksToObj(tcgabiolinks_obj = tcga_data)
+#'
+#' # Example 2: Integrate with GTEx data
+#' omics_obj_with_gtex <- TCGAbiolinksToObj(
+#'   gtf_anno = "gencode.v22.annotation.gtf",
+#'   tcgabiolinks_obj = tcga_data,
+#'   gtex_counts_data = "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct"
+#' )
+#'
+#' # Access different components
+#' counts <- assay(omics_obj_with_gtex, "counts")
+#' metadata <- colData(omics_obj_with_gtex)
+#' gene_info <- rowData(omics_obj_with_gtex)
+#'
+#' # Check survival data
+#' table(metadata$OS)
+#' summary(metadata$OS.time)
+#' }
+#'
+#'
+#'
+#' @importFrom SummarizedExperiment colData assay rowData SummarizedExperiment
+#' @importFrom dplyr rename mutate select distinct bind_rows
+#' @importFrom data.table fread
+#' @importFrom rtracklayer import.gff
+#' @importFrom GenomicRanges GRanges
+#' @importFrom methods as
+#' @importFrom S4Vectors DataFrame
+#'
+#' @export
+TCGAbiolinksToObj <- function(gtf_anno = NULL,
+                              tcgabiolinks_obj = NULL,
+                              gtex_counts_data = NULL){
+    # ============================================================================
+    # format metadata
+    mt <- SummarizedExperiment::colData(tcgabiolinks_obj) |>
+        data.frame() |>
+        dplyr::rename(group = tissue_type,
+                      sample2 = sample,
+                      sample = barcode) |>
+        dplyr::mutate(batch = "TCGA")
+
+    # get counts assay
+    ct <- SummarizedExperiment::assay(tcgabiolinks_obj, "unstranded")
+
+    # normalized data
+    norm <- SummarizedExperiment::assay(tcgabiolinks_obj, "tpm_unstrand")
+
+    # ===============
+    if(is.null(gtex_counts_data)){
+        # gene annotation
+        rowData <- SummarizedExperiment::rowData(tcgabiolinks_obj) |>
+            data.frame(check.names = FALSE) |>
+            dplyr::select(gene_id,gene_name,gene_type) |>
+            dplyr::rename(gene_biotype = gene_type)
+
+        gtf <- GenomicRanges::GRanges()
+    }else{
+        if(!exists("rowData.rda")){
+            gtf <- rtracklayer::import.gff(gtf_anno, format = "gtf")
+
+            gtf.tmp <- gtf |> data.frame(check.names = FALSE)
+
+            # feature
+            if("gene_id" %in% colnames(gtf.tmp)){
+                if(!("gene_name" %in% colnames(gtf.tmp))){
+                    gtf.tmp$gene_name <- gtf.tmp$gene_id
+                }
+
+                if(!("gene_biotype" %in% colnames(gtf.tmp))){
+                    if("gene_type" %in% colnames(gtf.tmp)){
+                        gtf.tmp$gene_biotype <- gtf.tmp$gene_type
+                    }else{
+                        gtf.tmp$gene_biotype <- "gene"
+                    }
+                }
+
+                rowData <- gtf.tmp[,c("gene_id","gene_name","gene_biotype")] |>
+                    dplyr::distinct()
+            }else{
+                stop("gene_id column not in your gtf file!")
+            }
+
+            rownames(rowData) <- rowData$gene_id
+
+            save(rowData, file = "rowData.rda")
+        }else{
+            load("rowData.rda")
+        }
+    }
+
+
+    # add survival time
+    mt <- mt |>
+        dplyr::mutate(OS.time = ifelse(vital_status == "Dead",
+                                       days_to_death,days_to_last_follow_up)) |>
+        dplyr::mutate(OS = ifelse(vital_status == "Dead", 1, 0))
+
+    # ============================================================================
+    # load getx data
+    # whether supply gtex data
+    if(!is.null(gtex_counts_data)){
+        # load gtex data
+        gtex <- data.table::fread(gtex_counts_data,skip = 2,header = T)
+
+        gtex.ct <- gtex[,c(-1,-2)]
+        rownames(gtex.ct) <- gtex$Name
+
+        # intersect gene name
+        gov <- intersect(rownames(gtex.ct), rownames(ct))
+
+        # filter genes
+        ct <- data.frame(ct, check.names = FALSE,row.names = rownames(ct))
+        ct <- ct[gov,]
+        gtex.ct <- data.frame(gtex.ct, check.names = FALSE,row.names = rownames(gtex.ct))
+        gtex.ct <- gtex.ct[gov,]
+
+        # identical(rownames(ct), rownames(gtex.ct))
+        ct2 <- cbind(ct,gtex.ct)
+
+        rowData <- rowData[gov,]
+
+        gtex.ph <- data.frame(sample = colnames(gtex.ct)) |>
+            dplyr::mutate(group = "Normal",batch = "GTEX")
+        rownames(gtex.ph) <- gtex.ph$sample
+
+        mt2 <- dplyr::bind_rows(mt, gtex.ph)
+
+        mt2$group2 <- paste(mt2$batch, mt2$group,sep = "-")
+
+        # identical(colnames(ct2), rownames(mt2))
+
+        asy <- list(counts = methods::as(as.matrix(ct2), "dgCMatrix"))
+    }else{
+        ct2 <- ct
+        mt2 <- mt
+
+        asy <- list(counts = methods::as(as.matrix(ct2), "dgCMatrix"),
+                    normed_counts = methods::as(norm, "dgCMatrix"))
+    }
+
+    # identical(colnames(ct2), rownames(mt2))
+    # ==========================================================================
+    # sce obj
+    sce <- SummarizedExperiment::SummarizedExperiment(
+        assays = asy,
         rowData = S4Vectors::DataFrame(rowData,
                                        row.names = rownames(rowData)),
         colData = S4Vectors::DataFrame(mt2,
