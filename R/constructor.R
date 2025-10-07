@@ -823,6 +823,7 @@ TCGAbiolinksToObj <- function(gtf_anno = NULL,
     }else{
         ct2 <- ct
         mt2 <- mt
+        gtf_anno <- ""
 
         asy <- list(counts = methods::as(as.matrix(ct2), "dgCMatrix"),
                     normed_counts = methods::as(norm, "dgCMatrix"))
