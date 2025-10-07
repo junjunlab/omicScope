@@ -153,13 +153,33 @@ omicscope <- function(gtfAnno = NULL,
     # ==========================================================================
     # load gtf
     if(!is.null(gtfAnno)){
-        gtf <- rtracklayer::import.gff(gtfAnno, format = "gtf")
+        if(!exists("rowData.rda")){
+            gtf <- rtracklayer::import.gff(gtfAnno, format = "gtf") |>
+                data.frame(check.names = FALSE)
 
-        # feature
-        rowData <- data.frame(gtf)[,c("gene_id","gene_name","gene_biotype")] |>
-            dplyr::distinct()
+            # feature
+            if("gene_id" %in% colnames(gtf)){
+                if(!("gene_name" %in% colnames(gtf))){
+                    gtf$gene_name <- gtf$gene_id
+                }
 
-        rownames(rowData) <- rowData$gene_id
+                if(!("gene_biotype" %in% colnames(gtf))){
+                    gtf$gene_biotype <- "gene"
+                }
+
+                rowData <- gtf[,c("gene_id","gene_name","gene_biotype")] |>
+                    dplyr::distinct()
+            }else{
+                stop("gene_id column not in your gtf file!")
+            }
+
+            rownames(rowData) <- rowData$gene_id
+
+            save(rowData, file = "rowData.rda")
+        }else{
+            load("rowData.rda")
+        }
+
     }else{
         gtf <- GenomicRanges::GRanges(
             seqnames = character(0),
@@ -435,11 +455,24 @@ ucscZenaToObj <- function(gtf_anno = NULL,
     # load gtf
     if(!is.null(gtf_anno)){
         if(!exists("rowData.rda")){
-            gtf <- rtracklayer::import.gff(gtf_anno, format = "gtf")
+            gtf <- rtracklayer::import.gff(gtf_anno, format = "gtf") |>
+                data.frame(check.names = FALSE)
 
             # feature
-            rowData <- data.frame(gtf)[,c("gene_id","gene_name","gene_type")] |>
-                dplyr::distinct()
+            if("gene_id" %in% colnames(gtf)){
+                if(!("gene_name" %in% colnames(gtf))){
+                    gtf$gene_name <- gtf$gene_id
+                }
+
+                if(!("gene_biotype" %in% colnames(gtf))){
+                    gtf$gene_biotype <- "gene"
+                }
+
+                rowData <- gtf[,c("gene_id","gene_name","gene_biotype")] |>
+                    dplyr::distinct()
+            }else{
+                stop("gene_id column not in your gtf file!")
+            }
 
             rownames(rowData) <- rowData$gene_id
 
