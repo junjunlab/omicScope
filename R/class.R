@@ -74,17 +74,21 @@ activitydata <- setClass("activitydata",
 #' @name omicscope
 #' @rdname omicscope
 #' @aliases omicscope
-#' @export omicscope
+#'
+#'
 #' @importFrom SummarizedExperiment SummarizedExperiment
 #' @importFrom GenomicRanges GRanges
 #' @importFrom methods setClass new
+#' @importFrom S4Vectors SimpleList
+#'
+#' @export omicscope
 .omicscope <- setClass("omicscope",
                        slots = list(gtfAnno = "GRanges",
                                     gtfPath = "character",
                                     normalizedData = "data.frame",
-                                    reduction = "list",
-                                    diffExpData = "list",
-                                    enrichmentData = "list",
+                                    reduction = "SimpleList",
+                                    diffExpData = "SimpleList",
+                                    enrichmentData = "SimpleList",
                                     activityData = "activitydata"),
                        contains = "SummarizedExperiment")
 
@@ -144,7 +148,7 @@ activitydata <- setClass("activitydata",
 diffdata <- setClass("diffdata",
                      slots = list(contrastName = "character",
                                   method = "character",
-                                  design = "list",
+                                  design = "SimpleList",
                                   log2FCthreshold = "numeric",
                                   pvalueThreshold = "numeric",
                                   sigUp = "integer",
