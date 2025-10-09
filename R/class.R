@@ -69,6 +69,9 @@ activitydata <- setClass("activitydata",
 #'   various databases (GO, KEGG, Reactome, etc.)
 #' @slot activityData An \code{activitydata} object containing pathway activity
 #'   analysis results and related metadata
+#' @slot tmeData List storing tumor microenvironment analysis results from IOBR
+#'   for various methods and contrasts.
+#'
 #'
 #' @author Jun Zhang
 #' @name omicscope
@@ -89,7 +92,8 @@ activitydata <- setClass("activitydata",
                                     reduction = "SimpleList",
                                     diffExpData = "SimpleList",
                                     enrichmentData = "SimpleList",
-                                    activityData = "activitydata"),
+                                    activityData = "activitydata",
+                                    tmeData = "SimpleList"),
                        contains = "SummarizedExperiment")
 
 

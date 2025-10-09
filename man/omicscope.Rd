@@ -127,6 +127,9 @@ various databases (GO, KEGG, Reactome, etc.)}
 
 \item{\code{activityData}}{An \code{activitydata} object containing pathway activity
 analysis results and related metadata}
+
+\item{\code{tmeData}}{List storing tumor microenvironment analysis results from IOBR
+for various methods and contrasts.}
 }}
 
 \examples{
