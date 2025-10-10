@@ -6,9 +6,12 @@
 #' methods. It processes RNA-seq count data and identifies significantly differentially
 #' expressed genes based on specified thresholds.
 #'
-#' @param object An omicscope object containing count data and sample information
+#' @param object An omicscope object containing count data and sample information.
 #' @param selectedSample Character vector of sample names to include in the analysis.
-#'   If NULL (default), all samples are used
+#'   If NULL (default), all samples are used.
+#' @param contrastColumn Character string specifying the column name in colData
+#'   to use for defining groups in the contrast. Default is "group". This column
+#'   will be used to extract group information for edgeR and limma analyses.
 #' @param contrastName Character string specifying the name for this contrast.
 #'   If NULL, defaults to "treat_vs_control"
 #' @param deseq2Design Formula specifying the design matrix for DESeq2 analysis.
@@ -147,6 +150,7 @@ setMethod("differential_expression",
           signature(object = "omicscope"),
           function(object,
                    selectedSample = NULL,
+                   contrastColumn = "group",
                    contrastName = NULL,
                    deseq2Design = ~group,
                    deseq2Contrast = c('group', 'treat', 'control'),
@@ -225,7 +229,9 @@ setMethod("differential_expression",
                   cat("Performing edger differential analysis now...")
 
                   # edger
-                  dge <- edgeR::DGEList(counts = asy, group = coldata$group)
+                  gp <- coldata |> dplyr::pull(.data[[contrastColumn]])
+
+                  dge <- edgeR::DGEList(counts = asy, group = gp)
 
                   gde.fl <- dge[edgeR::filterByExpr(dge), ,
                                 keep.lib.sizes = FALSE]
@@ -234,7 +240,7 @@ setMethod("differential_expression",
 
                   # design matrix
                   if(is.null(edgerDesign)){
-                      group <- coldata$group
+                      group <- gp
 
                       design <- stats::model.matrix(~group)
                   }else{
@@ -261,7 +267,9 @@ setMethod("differential_expression",
                   cat("Performing limma differential analysis now...")
 
                   # limma
-                  dge <- edgeR::DGEList(counts = asy, group = coldata$group)
+                  gp <- coldata |> dplyr::pull(.data[[contrastColumn]])
+
+                  dge <- edgeR::DGEList(counts = asy, group = gp)
 
                   gde.fl <- dge[edgeR::filterByExpr(dge), ,
                                 keep.lib.sizes = FALSE]
@@ -270,7 +278,7 @@ setMethod("differential_expression",
 
                   # design matrix
                   if(is.null(limmaDesign)){
-                      group <- coldata$group
+                      group <- gp
 
                       design <- stats::model.matrix(~group)
                   }else{

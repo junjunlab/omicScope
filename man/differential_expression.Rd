@@ -10,6 +10,7 @@ differential_expression(object, ...)
 \S4method{differential_expression}{omicscope}(
   object,
   selectedSample = NULL,
+  contrastColumn = "group",
   contrastName = NULL,
   deseq2Design = ~group,
   deseq2Contrast = c("group", "treat", "control"),
@@ -22,12 +23,16 @@ differential_expression(object, ...)
 )
 }
 \arguments{
-\item{object}{An omicscope object containing count data and sample information}
+\item{object}{An omicscope object containing count data and sample information.}
 
 \item{...}{Additional arguments (currently not used)}
 
 \item{selectedSample}{Character vector of sample names to include in the analysis.
-If NULL (default), all samples are used}
+If NULL (default), all samples are used.}
+
+\item{contrastColumn}{Character string specifying the column name in colData
+to use for defining groups in the contrast. Default is "group". This column
+will be used to extract group information for edgeR and limma analyses.}
 
 \item{contrastName}{Character string specifying the name for this contrast.
 If NULL, defaults to "treat_vs_control"}
