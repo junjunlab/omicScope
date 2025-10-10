@@ -1545,3 +1545,238 @@ setMethod("gene_cor_plot",
                   ggpubr::stat_cor()
 
           })
+
+
+
+
+
+#' Plot Tumor Microenvironment (TME) Analysis Results
+#'
+#' @description
+#' Visualizes tumor microenvironment analysis results from deconvolution or
+#' signature scoring methods. Supports both boxplot and heatmap visualizations
+#' to display cell type proportions or signature scores across samples.
+#'
+#' @param object An \code{omicscope} object containing TME analysis results.
+#' @param method Character string specifying the analysis method to visualize.
+#'   Options are:
+#'   \itemize{
+#'     \item \code{"deconvo"}: Deconvolution results (cell type proportions)
+#'     \item \code{"signature"}: Signature scoring results
+#'   }
+#'   Default is \code{"deconvo"}.
+#' @param color_by Character string specifying the column name in colData
+#'   to use for grouping samples. Default is \code{"group"}.
+#' @param fill_col Character vector of colors for filling boxplots or
+#'   annotation colors. Default is \code{c("grey", "red")}.
+#' @param type Character string specifying the plot type. Options are:
+#'   \itemize{
+#'     \item \code{"box"}: Boxplot with optional jittered points
+#'     \item \code{"heatmap"}: Heatmap with hierarchical clustering
+#'   }
+#'   Default is \code{"box"}.
+#' @param box_width Numeric value specifying the width of boxplots.
+#'   Default is \code{0.75}.
+#' @param error_bar_width Numeric value specifying the width of error bars
+#'   in boxplots. Default is \code{0.25}.
+#' @param add_point Logical indicating whether to add individual data points
+#'   to boxplots. Default is \code{FALSE}.
+#' @param jitter.width Numeric value controlling the amount of horizontal
+#'   jitter for points. Default is \code{0.3}.
+#' @param point_col Character string specifying the color of jittered points.
+#'   Default is \code{"grey30"}.
+#' @param point_alpha Numeric value (0-1) specifying the transparency of
+#'   jittered points. Default is \code{0.8}.
+#' @param complexHeatmap_params Named list of additional parameters to pass
+#'   to \code{ComplexHeatmap::Heatmap()}. Only used when \code{type = "heatmap"}.
+#'   Default is an empty list.
+#' @param ... Additional arguments (currently not used).
+#'
+#'
+#' @return
+#' For \code{type = "box"}: A \code{ggplot2} object showing boxplots of
+#' cell type proportions or signature scores across groups with statistical
+#' comparisons (Wilcoxon test).
+#'
+#' For \code{type = "heatmap"}: A \code{ComplexHeatmap} object displaying
+#' z-score normalized values with sample annotations.
+#'
+#' @details
+#' The function extracts TME analysis results from the \code{omicscope} object's
+#' \code{tmeData} slot. For deconvolution results, it displays estimated cell
+#' type proportions. For signature results, it shows signature scores.
+#'
+#' When using boxplot visualization (\code{type = "box"}):
+#' \itemize{
+#'   \item Statistical comparisons are performed using Wilcoxon test
+#'   \item P-values are displayed as significance symbols
+#'   \item Optional jittered points show individual sample values
+#' }
+#'
+#' When using heatmap visualization (\code{type = "heatmap"}):
+#' \itemize{
+#'   \item Values are z-score normalized (scaled by column)
+#'   \item Samples are organized by the grouping variable
+#'   \item Cell types/signatures with zero values across all samples are removed
+#'   \item Column clustering is disabled by default
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Create example omicscope object (assuming you have the data)
+#' # obj <- create_omicscope_object(...)
+#'
+#' # Boxplot visualization of deconvolution results
+#' tme_plot(obj,
+#'          method = "deconvo",
+#'          type = "box",
+#'          color_by = "group",
+#'          add_point = TRUE)
+#'
+#' # Heatmap visualization of deconvolution results
+#' tme_plot(obj,
+#'          method = "deconvo",
+#'          type = "heatmap",
+#'          fill_col = c("blue", "red"))
+#'
+#' # Signature scoring with custom heatmap parameters
+#' tme_plot(obj,
+#'          method = "signature",
+#'          type = "heatmap",
+#'          complexHeatmap_params = list(
+#'            cluster_rows = TRUE,
+#'            show_row_dend = TRUE
+#'          ))
+#' }
+#'
+#'
+#'
+#' @importFrom SummarizedExperiment colData
+#' @importFrom dplyr arrange left_join pull
+#' @importFrom tidyr pivot_longer
+#' @importFrom ggplot2 ggplot aes geom_boxplot theme_bw theme element_text
+#'   scale_fill_manual xlab ylab
+#' @importFrom ComplexHeatmap Heatmap columnAnnotation
+#' @importFrom tibble column_to_rownames
+#'
+#' @export
+#' @rdname tme_plot
+setGeneric("tme_plot",function(object,...){
+    standardGeneric("tme_plot")
+})
+
+
+
+
+
+
+
+
+#' @rdname tme_plot
+#' @export
+setMethod("tme_plot",
+          signature(object = "omicscope"),
+          function(object,
+                   method = c("deconvo","signature"),
+                   color_by = "group",
+                   fill_col = c("grey","red"),
+                   type = c("box","heatmap"),
+                   box_width = 0.75,
+                   error_bar_width = 0.25,
+                   add_point = FALSE,
+                   jitter.width = 0.3, point_col = "grey30", point_alpha = 0.8,
+                   complexHeatmap_params = list()) {
+              method <- match.arg(method, choices = c("deconvo","signature"))
+              type <- match.arg(type, choices = c("box","heatmap"))
+              # ==================================================================
+              # metadata
+              coldata <- data.frame(SummarizedExperiment::colData(object),
+                                    check.names = FALSE,
+                                    stringsAsFactors = TRUE)
+
+              coldata <- coldata[,c("sample", color_by)] |>
+                  dplyr::arrange(.data[[color_by]])
+
+              # get tme results
+              if(method == "deconvo"){
+                  res <- object@tmeData$deconvoRes
+              }else{
+                  res <- object@tmeData$signatureRes
+              }
+
+              res.lg <- res |>
+                  dplyr::left_join(y = coldata, by = c("ID" = "sample")) |>
+                  tidyr::pivot_longer(cols = !c("ID",color_by),
+                                      names_to = "cell_type",
+                                      values_to = "prop")
+
+
+              # ==================================================================
+              # plot
+
+              # check type
+              if(type == "box"){
+                  p <- ggplot(res.lg,
+                              aes(x = cell_type,y = prop,fill = .data[[color_by]])) +
+                      stat_boxplot(geom = "errorbar",width = error_bar_width,
+                                   position = position_dodge(width = 0.9)) +
+                      geom_boxplot(position = position_dodge(width = 0.9),
+                                   width = box_width,
+                                   outlier.alpha = 0.5,
+                                   outlier.color = "grey")
+
+                  # add point
+                  if(add_point == TRUE){
+                      p <- p +
+                          geom_jitter(position = position_jitterdodge(jitter.width = jitter.width,
+                                                                      dodge.width = 0.9),
+                                      color = point_col,alpha = point_alpha)
+                  }
+
+
+                  p <- p +
+                      theme_bw() +
+                      theme(axis.text = element_text(colour = "black"),
+                            axis.text.x = element_text(angle = 90,hjust = 1,vjust = 0.5),
+                            panel.grid = element_blank()) +
+                      scale_fill_manual(values = fill_col,name = "Group") +
+                      xlab(" ") + ylab("Estimated proportion") +
+                      ggpubr::stat_compare_means(aes(group = .data[[color_by]]),
+                                                 label = "p.signif",
+                                                 method = "wilcox.test")
+
+              }else if(type == "heatmap"){
+                  res.mat <- tibble::column_to_rownames(res, var = "ID")
+                  res.mat <- res.mat[rownames(coldata),]
+                  res.mat <- res.mat[,colSums(res.mat) > 0]
+                  res.mat <- as.matrix(scale(res.mat,center = TRUE,scale = TRUE)) |>
+                      t() |> na.omit()
+
+                  # identical(rownames(coldata),rownames(res.mat))
+
+                  raw.anno <- ComplexHeatmap::columnAnnotation(
+                      Sample = dplyr::pull(coldata,.data[[color_by]]),
+                      show_annotation_name = FALSE)
+
+                  # plot
+                  p <- do.call(ComplexHeatmap::Heatmap,
+                               modifyList(list(matrix = res.mat,
+                                               name = "Z-score",
+                                               cluster_columns = FALSE,
+                                               row_names_max_width = unit(20, "cm"),
+                                               na_col = "black",
+                                               top_annotation = raw.anno,
+                                               show_row_names = TRUE,
+                                               show_column_names = FALSE,
+                                               column_title = "Sample",
+                                               column_split = dplyr::pull(coldata,.data[[color_by]]),
+                                               border = TRUE),
+                                          complexHeatmap_params))
+
+
+              }
+
+
+              return(p)
+          })
+

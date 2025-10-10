@@ -3,7 +3,7 @@ globalVariables(c("FDR", "P.Value", "PC1", "PC2", "PValue", "adj.P.Val", "gene_n
                   "std", "weight", "y","group", "value",".data", "id2","OS", "OS.time",
                   "modifyList", "na.omit", "pvalue", "sample_name", "stat", "type","alpha",
                   "barcode", "days_to_death", "days_to_last_follow_up", "gene_type",
-                  "tissue_type","vital_status"))
+                  "tissue_type","vital_status", "signature_tme","cell_type", "prop"))
 
 
 
@@ -83,6 +83,7 @@ activitydata <- setClass("activitydata",
 #' @importFrom GenomicRanges GRanges
 #' @importFrom methods setClass new
 #' @importFrom S4Vectors SimpleList
+#'
 #'
 #' @export omicscope
 .omicscope <- setClass("omicscope",
