@@ -19,6 +19,8 @@
 -   📦 **Differential Expression**: Integration with DESeq2, edgeR, and limma
 -   📦 **Functional Enrichment**: GO, KEGG, and custom gene set enrichment analysis
 -   📦 **Activity Inference**: Pathway and transcription factor activity estimation using decoupleR
+-   📦 **TME Analysis**: Seamless integration with **IOBR** package for tumor microenvironment deconvolution and signature scoring
+-   📦 **Multi-Source Data Support**: Direct compatibility with **TCGAbiolinks** and **UCSC Xena** datasets for streamlined downstream analysis
 -   📦 **Rich Visualizations**: Publication-ready plots including heatmaps, volcano plots, and correlation matrices
 -   📦 **S4 Object System**: Organized data management and reproducible analysis workflows
 
@@ -52,42 +54,6 @@ omicScope is an open-source project and we actively encourage community contribu
 -   💡 **Testing** - Add unit tests or test with your own datasets.
 -   💡 **Ideas** - Share suggestions for improvements or new directions.
 
-## Quick start
-
-Here's a basic workflow demonstrating omicScope's capabilities:
-
-``` r
-library(SummarizedExperiment)
-library(omicScope)
-
-# Load example data or create omicscope object from count matrix
-bams <- c("../test-bam/0a.sorted.bam","../test-bam/0b.sorted.bam",
-          "../test-bam/4a.sorted.bam","../test-bam/4b.sorted.bam",
-          "../test-bam/10a.sorted.bam","../test-bam/10b.sorted.bam")
-
-mta <- data.frame(sample = bams,
-                  sample_name = c("day0-rep1","day0-rep2",
-                                  "day4-rep1","day4-rep2",
-                                  "day10-rep1","day10-rep2"),
-                  group = rep(c("day0","day4","day10"),each = 2))
-
-
-data("counts")
-
-# Create omicscope object
-os <- omicscope(gtfAnno = "../test-bam/Mus_musculus.GRCm38.102.gtf.gz",
-                counts = counts,
-                metadata = mta)
-os
-# class: omicscope 
-# dim: 39732 6 
-# metadata(0):
-# assays(1): counts
-# rownames(39732): ENSMUSG00000102693 ENSMUSG00000051951 ... ENSMUSG00000094621 ENSMUSG00000095742
-# rowData names(3): gene_id gene_name gene_biotype
-# colnames(6): day0-rep1 day0-rep2 ... day10-rep1 day10-rep2
-# colData names(3): sample sample_name group
-```
 
 ## Future plan
 
