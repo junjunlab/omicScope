@@ -658,6 +658,10 @@ setMethod("activity_plot",
 #'   If NULL (default), all samples will be included.
 #' @param color_by Character string specifying the column name in colData to use
 #'   for sample annotation coloring. Default is "group".
+#' @param group_colors Named character vector specifying colors for each group level.
+#'   Names should match the levels in the \code{color_by} column.
+#'   Default is \code{c("Tumor" = "#E74C3C", "Normal" = "#3498DB")}.
+#'   Example: \code{c("Control" = "#2ECC71", "Treatment" = "#E67E22")}.
 #' @param complexHeatmap_params List. Additional parameters to pass to
 #'   \code{ComplexHeatmap::Heatmap()} function for customizing the heatmap appearance.
 #'   Default is an empty list.
@@ -725,6 +729,7 @@ setMethod("exp_heatmap_plot",
                    selected_gene = NULL,
                    selected_sample = NULL,
                    color_by = "group",
+                   group_colors = c("Tumor" = "#E74C3C", "Normal" = "#3498DB"),
                    complexHeatmap_params = list()){
               # ==================================================================
               # get normalized counts
@@ -752,7 +757,8 @@ setMethod("exp_heatmap_plot",
                                       values_to = "value")
 
               cold <- SummarizedExperiment::colData(object) |>
-                  data.frame(check.names = FALSE)
+                  data.frame(check.names = FALSE) |>
+                  dplyr::arrange(.data[[color_by]])
 
               pdf.anno.lg <- pdf.lg |>
                   dplyr::inner_join(y = cold, by = "sample")
@@ -773,6 +779,7 @@ setMethod("exp_heatmap_plot",
                   tibble::column_to_rownames('gene_name') |>
                   t()
 
+              pdf_mat <- pdf_mat[rownames(cold),]
 
               # Scale per feature
               pdf_mat <- as.matrix(scale(pdf_mat,center = TRUE,scale = TRUE))
@@ -782,6 +789,7 @@ setMethod("exp_heatmap_plot",
               gp <- gp[rownames(pdf_mat),]
 
               raw.anno <- ComplexHeatmap::rowAnnotation(Sample = gp$group,
+                                                        col = list(Sample = group_colors),
                                                         show_annotation_name = FALSE)
 
               # plot
@@ -901,7 +909,7 @@ setMethod("correlation_plot",
                    corrplot_params = list()){
               # ==================================================================
               # get normalized counts
-              ck <- length(object@normalizedData$longer) == 0
+              ck <- length(object@normalizedData) == 0
 
               if(ck){
                   stop("Please run get_normalized_data function first!")
@@ -909,7 +917,7 @@ setMethod("correlation_plot",
 
               cd <- SummarizedExperiment::colData(object)
 
-              pdf.w <- object@normalizedData$wider[,1:nrow(cd)]
+              pdf.w <- object@normalizedData[,1:nrow(cd)]
 
               colnames(pdf.w) <- cd$sample_name
 
@@ -1156,7 +1164,7 @@ setMethod("surv_plot",
                                                event = "OS",
                                                variables = c("value"))
 
-                      cut.val <- cut.val$cutpoint$cutpoint
+                      cut.val <- cut.val$value$estimate |> as.numeric()
                   }else{
                       cut.val <- stats::median(tmp$value)
                   }

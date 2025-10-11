@@ -12,6 +12,7 @@ exp_heatmap_plot(object, ...)
   selected_gene = NULL,
   selected_sample = NULL,
   color_by = "group",
+  group_colors = c(Tumor = "#E74C3C", Normal = "#3498DB"),
   complexHeatmap_params = list()
 )
 }
@@ -30,6 +31,11 @@ If NULL (default), all samples will be included.}
 
 \item{color_by}{Character string specifying the column name in colData to use
 for sample annotation coloring. Default is "group".}
+
+\item{group_colors}{Named character vector specifying colors for each group level.
+Names should match the levels in the \code{color_by} column.
+Default is \code{c("Tumor" = "#E74C3C", "Normal" = "#3498DB")}.
+Example: \code{c("Control" = "#2ECC71", "Treatment" = "#E67E22")}.}
 
 \item{complexHeatmap_params}{List. Additional parameters to pass to
 \code{ComplexHeatmap::Heatmap()} function for customizing the heatmap appearance.
