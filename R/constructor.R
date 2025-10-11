@@ -214,6 +214,14 @@ omicscope <- function(gtfAnno = NULL,
             ct <- ct[,c(8:ncol(ct))]
         }
 
+        if(is.null(gtfAnno)){
+            rowData <- data.frame(gene_id = rownames(ct),
+                                  gene_name = rownames(ct),
+                                  gene_biotype = "gene")
+
+            rownames(rowData) <- rowData$gene_id
+        }
+
         rowData <- subset(rowData, gene_id %in% rownames(ct))
 
         # keep same order
