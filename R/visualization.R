@@ -605,7 +605,7 @@ setMethod("activity_plot",
                               net <- net |>
                                   dplyr::mutate(type = dplyr::case_when(weight > 0 & y > 0 ~ "Up",
                                                                         weight < 0 & y < 0 ~ "Down",
-                                                                        .default = "non"))
+                                                                        .default = "Non change"))
 
                               # plot
                               p <-
@@ -617,7 +617,7 @@ setMethod("activity_plot",
                                   theme(panel.grid = element_blank(),
                                         aspect.ratio = 1,
                                         axis.text = element_text(colour = "black")) +
-                                  scale_color_manual(values = c(Up = "#DC143C", Down = "#19183B", non = "grey")) +
+                                  scale_color_manual(values = c(Up = "#DC143C", Down = "#19183B", "Non change" = "grey")) +
                                   ylab("Statistic value") + xlab("Weight") +
                                   ggtitle(label = target_pathway[x]) +
                                   guides(color = guide_legend(override.aes = list(size = 4)))

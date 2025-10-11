@@ -232,7 +232,15 @@ setMethod("run_enrichment",
 
               # ================================================================
               # return
-              object@enrichmentData <- enrich.list[[1]][[1]]
+              if(enrich_type == "go"){
+                  object@enrichmentData[["GO"]] <- S4Vectors::SimpleList(enrich.list[[1]][[1]])
+              }else if(enrich_type == "gsea_go"){
+                  object@enrichmentData[["GSEA_GO"]] <- S4Vectors::SimpleList(enrich.list[[1]][[1]])
+              }else if(enrich_type == "kegg"){
+                  object@enrichmentData[["KEGG"]] <- S4Vectors::SimpleList(enrich.list[[1]][[1]])
+              }else if(enrich_type == "gsea_kegg"){
+                  object@enrichmentData[["GSEA_KEGG"]] <- S4Vectors::SimpleList(enrich.list[[1]][[1]])
+              }
 
               return(object)
           }
