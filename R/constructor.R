@@ -228,7 +228,7 @@ omicscope <- function(gtfAnno = NULL,
 
         # check metadata
         if(!is.null(metadata)){
-            if(all(c("sample","group") %in% colnames(metadata))){
+            if(all(c("sample") %in% colnames(metadata))){
                 mt <- mt |>
                     dplyr::inner_join(y = metadata, by = "sample")
 
@@ -245,7 +245,7 @@ omicscope <- function(gtfAnno = NULL,
                 rownames(mt) <- mt$sample_name
                 colnames(ct) <- mt$sample_name
             }else{
-                stop("sample and group must included in metadata!")
+                stop("sample column must be included in metadata!")
             }
         }
 
@@ -265,7 +265,7 @@ omicscope <- function(gtfAnno = NULL,
 
         # check metadata
         if(!is.null(metadata)){
-            if(all(c("sample","group") %in% colnames(metadata))){
+            if(all(c("sample") %in% colnames(metadata))){
                 mt <- mt |>
                     dplyr::inner_join(y = metadata, by = "sample")
 
@@ -276,7 +276,7 @@ omicscope <- function(gtfAnno = NULL,
                     mt$sample_name <- mt$sample
                 }
             }else{
-                stop("sample and group must included in metadata!")
+                stop("sample column must be included in metadata!")
             }
         }
 
