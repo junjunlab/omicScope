@@ -44,6 +44,10 @@ if (!requireNamespace("pak", quietly = TRUE)) {
 pak::pak("junjunlab/omicScope")
 ```
 
+## Documentation
+
+A detailed documentation is at <https://junjunlab.github.io/omicScope-documentation/>.
+
 ## Contributing
 
 omicScope is an open-source project and we actively encourage community contributions! Whether you're interested in:
@@ -53,7 +57,6 @@ omicScope is an open-source project and we actively encourage community contribu
 -   💡 **Documentation** - Improve examples, tutorials, or function documentation.
 -   💡 **Testing** - Add unit tests or test with your own datasets.
 -   💡 **Ideas** - Share suggestions for improvements or new directions.
-
 
 ## Future plan
 
