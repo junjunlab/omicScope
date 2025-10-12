@@ -1575,6 +1575,10 @@ setMethod("gene_cor_plot",
 #'   Default is \code{"deconvo"}.
 #' @param color_by Character string specifying the column name in colData
 #'   to use for grouping samples. Default is \code{"group"}.
+#' @param group_colors Named character vector specifying colors for each group level.
+#'   Names should match the levels in the \code{color_by} column.
+#'   Default is \code{c("Tumor" = "#E74C3C", "Normal" = "#3498DB")}.
+#'   Example: \code{c("Control" = "#2ECC71", "Treatment" = "#E67E22")}.
 #' @param fill_col Character vector of colors for filling boxplots or
 #'   annotation colors. Default is \code{c("grey", "red")}.
 #' @param type Character string specifying the plot type. Options are:
@@ -1687,6 +1691,7 @@ setMethod("tme_plot",
           function(object,
                    method = c("deconvo","signature"),
                    color_by = "group",
+                   group_colors = c("Tumor" = "#E74C3C", "Normal" = "#3498DB"),
                    fill_col = c("grey","red"),
                    type = c("box","heatmap"),
                    box_width = 0.75,
@@ -1764,6 +1769,7 @@ setMethod("tme_plot",
 
                   raw.anno <- ComplexHeatmap::columnAnnotation(
                       Sample = dplyr::pull(coldata,.data[[color_by]]),
+                      col = list(Sample = group_colors),
                       show_annotation_name = FALSE)
 
                   # plot

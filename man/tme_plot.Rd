@@ -11,6 +11,7 @@ tme_plot(object, ...)
   object,
   method = c("deconvo", "signature"),
   color_by = "group",
+  group_colors = c(Tumor = "#E74C3C", Normal = "#3498DB"),
   fill_col = c("grey", "red"),
   type = c("box", "heatmap"),
   box_width = 0.75,
@@ -37,6 +38,11 @@ Default is \code{"deconvo"}.}
 
 \item{color_by}{Character string specifying the column name in colData
 to use for grouping samples. Default is \code{"group"}.}
+
+\item{group_colors}{Named character vector specifying colors for each group level.
+Names should match the levels in the \code{color_by} column.
+Default is \code{c("Tumor" = "#E74C3C", "Normal" = "#3498DB")}.
+Example: \code{c("Control" = "#2ECC71", "Treatment" = "#E67E22")}.}
 
 \item{fill_col}{Character vector of colors for filling boxplots or
 annotation colors. Default is \code{c("grey", "red")}.}
