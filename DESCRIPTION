@@ -38,7 +38,9 @@ Imports:
     tidyr,
     corrplot,
     scales,
-    data.table
+    data.table,
+    magrittr,
+    Rsamtools
 Enhances: 
     Rtsne,
     umap
@@ -53,5 +55,7 @@ Suggests:
     ggsurvfit,
     survival,
     maxstat,
-    ggpubr
+    ggpubr,
+    ggh4x,
+    ggarrow
 VignetteBuilder: knitr

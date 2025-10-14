@@ -25,6 +25,16 @@
 #'   Default is \code{"hsa"}.
 #' @param pvalueCutoff Numeric value specifying the p-value cutoff for
 #'   significance testing. Default is \code{1} (no filtering).
+#' @param enrich_fun_keytype Character string. The `keyType` argument passed to
+#'   `clusterProfiler` functions, specifying the type of gene IDs used for enrichment.
+#'   Defaults to \code{"ENTREZID"}. Should not typically be changed unless you are using
+#'   non-standard gene identifiers.
+#' @param id_trans Logical. If \code{TRUE} (default), the function attempts to
+#'   translate gene SYMBOLs to ENTREZ IDs. If \code{FALSE}, no translation is performed,
+#'   and the `gene_name` column is assumed to already contain the correct IDs.
+#' @param kegg_setReadable Logical, applicable only to KEGG analyses (`"kegg"` or `"gsea_kegg"`).
+#'   If \code{TRUE} (default), ENTREZ IDs in the results are converted back to readable
+#'   gene SYMBOLs.
 #' @param ... Additional arguments (currently not used).
 #'
 #' @details
@@ -107,7 +117,10 @@ setMethod("run_enrichment",
                    enrich_type = c("go","gsea_go","kegg","gsea_kegg"),
                    OrgDb = NULL,
                    organism = "hsa",
-                   pvalueCutoff = 1){
+                   pvalueCutoff = 1,
+                   enrich_fun_keytype = "ENTREZID",
+                   id_trans = TRUE,
+                   kegg_setReadable = TRUE){
               enrich_type <- match.arg(
                   enrich_type,
                   choices = c("go","gsea_go","kegg","gsea_kegg"))
@@ -144,15 +157,21 @@ setMethod("run_enrichment",
 
 
                       # id transform
-                      id <- clusterProfiler::bitr(geneID = tmp$gene_name,
-                                                  fromType = "SYMBOL",
-                                                  toType = "ENTREZID",
-                                                  OrgDb = OrgDb)
+                      if(id_trans == TRUE){
+                          id <- clusterProfiler::bitr(geneID = tmp$gene_name,
+                                                      fromType = "SYMBOL",
+                                                      toType = "ENTREZID",
+                                                      OrgDb = OrgDb)
 
-                      id.tmp <- id |>
-                          dplyr::inner_join(y = tmp,
-                                            by = c("SYMBOL" = "gene_name")) |>
-                          dplyr::arrange(dplyr::desc(log2FoldChange))
+                          id.tmp <- id |>
+                              dplyr::inner_join(y = tmp,
+                                                by = c("SYMBOL" = "gene_name")) |>
+                              dplyr::arrange(dplyr::desc(log2FoldChange))
+                      }else{
+                          id.tmp <-  tmp |>
+                              dplyr::mutate(ENTREZID = gene_name)
+                      }
+
 
                       # check
                       if(enrich_type %in% c("gsea_go","gsea_kegg")){
@@ -164,7 +183,7 @@ setMethod("run_enrichment",
                                   geneList = glist,
                                   ont = "ALL",
                                   OrgDb = OrgDb,
-                                  keyType = "ENTREZID",
+                                  keyType = enrich_fun_keytype,
                                   pvalueCutoff = pvalueCutoff)
                           }else if(enrich_type == "gsea_kegg"){
                               ego <- clusterProfiler::gseKEGG(
@@ -173,9 +192,12 @@ setMethod("run_enrichment",
                                   pvalueCutoff = pvalueCutoff)
 
                               # to readble
-                              ego <- clusterProfiler::setReadable(
-                                  x = ego,
-                                  OrgDb = OrgDb,keyType = "ENTREZID")
+                              if(kegg_setReadable == TRUE){
+                                  ego <- clusterProfiler::setReadable(
+                                      x = ego,
+                                      OrgDb = OrgDb,keyType = enrich_fun_keytype)
+                              }
+
                           }
 
                           golist <- list(ego)
@@ -197,7 +219,7 @@ setMethod("run_enrichment",
                                   ego <- clusterProfiler::enrichGO(
                                       gene = tmp.data$ENTREZID,
                                       OrgDb = OrgDb,
-                                      keyType = "ENTREZID",
+                                      keyType = enrich_fun_keytype,
                                       ont = "ALL",
                                       pvalueCutoff = pvalueCutoff,
                                       readable = TRUE
@@ -211,9 +233,12 @@ setMethod("run_enrichment",
 
 
                                   # to readble
-                                  ego <- clusterProfiler::setReadable(
-                                      x = ego,
-                                      OrgDb = OrgDb,keyType = "ENTREZID")
+                                  if(kegg_setReadable == TRUE){
+                                      ego <- clusterProfiler::setReadable(
+                                          x = ego,
+                                          OrgDb = OrgDb,keyType = enrich_fun_keytype)
+                                  }
+
                               }
                           }) -> golist
 

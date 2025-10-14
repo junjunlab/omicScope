@@ -12,7 +12,10 @@ run_enrichment(object, ...)
   enrich_type = c("go", "gsea_go", "kegg", "gsea_kegg"),
   OrgDb = NULL,
   organism = "hsa",
-  pvalueCutoff = 1
+  pvalueCutoff = 1,
+  enrich_fun_keytype = "ENTREZID",
+  id_trans = TRUE,
+  kegg_setReadable = TRUE
 )
 }
 \arguments{
@@ -41,6 +44,19 @@ Default is \code{"hsa"}.}
 
 \item{pvalueCutoff}{Numeric value specifying the p-value cutoff for
 significance testing. Default is \code{1} (no filtering).}
+
+\item{enrich_fun_keytype}{Character string. The \code{keyType} argument passed to
+\code{clusterProfiler} functions, specifying the type of gene IDs used for enrichment.
+Defaults to \code{"ENTREZID"}. Should not typically be changed unless you are using
+non-standard gene identifiers.}
+
+\item{id_trans}{Logical. If \code{TRUE} (default), the function attempts to
+translate gene SYMBOLs to ENTREZ IDs. If \code{FALSE}, no translation is performed,
+and the \code{gene_name} column is assumed to already contain the correct IDs.}
+
+\item{kegg_setReadable}{Logical, applicable only to KEGG analyses (\code{"kegg"} or \code{"gsea_kegg"}).
+If \code{TRUE} (default), ENTREZ IDs in the results are converted back to readable
+gene SYMBOLs.}
 }
 \value{
 An \code{omicscope} object with enrichment results stored in the

@@ -3,7 +3,10 @@ globalVariables(c("FDR", "P.Value", "PC1", "PC2", "PValue", "adj.P.Val", "gene_n
                   "std", "weight", "y","group", "value",".data", "id2","OS", "OS.time",
                   "modifyList", "na.omit", "pvalue", "sample_name", "stat", "type","alpha",
                   "barcode", "days_to_death", "days_to_last_follow_up", "gene_type",
-                  "tissue_type","vital_status", "signature_tme","cell_type", "prop"))
+                  "tissue_type","vital_status", "signature_tme","cell_type", "prop",
+                  ".", "end", "exon_length", "label", "pos", "rpm", "strand", "target_genes",
+                  "transcript_id", "transcript_length", "transcript_rank", "which_label",
+                  "x", "xend", "y_max"))
 
 
 
