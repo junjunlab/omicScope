@@ -210,7 +210,7 @@ coverage_plot <- function(bam_file = NULL,
         dplyr::mutate(sample = "Gene structure",group = "Gene structure")
 
     tid <- gtf |>
-        dplyr::filter(gene_name %in% target_genes) |>
+        dplyr::filter(gene_name %in% target_gene) |>
         dplyr::filter(type == "transcript")
 
     strc.info <- strc |>
