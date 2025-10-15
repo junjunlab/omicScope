@@ -6,7 +6,8 @@ globalVariables(c("FDR", "P.Value", "PC1", "PC2", "PValue", "adj.P.Val", "gene_n
                   "tissue_type","vital_status", "signature_tme","cell_type", "prop",
                   ".", "end", "exon_length", "label", "pos", "rpm", "strand", "target_genes",
                   "transcript_id", "transcript_length", "transcript_rank", "which_label",
-                  "x", "xend", "y_max"))
+                  "x", "xend", "y_max","gene_span", "gene_start", "track", "trans_end",
+                  "trans_span", "trans_start"))
 
 
 

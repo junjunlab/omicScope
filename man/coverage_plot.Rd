@@ -10,9 +10,11 @@ coverage_plot(
   group_name = NULL,
   gtf_file = NULL,
   target_gene = NULL,
+  target_region = NULL,
   sample_order = NULL,
   group_order = NULL,
   gene_order = NULL,
+  region_order = NULL,
   merge_group = FALSE,
   add_range_label = FALSE,
   range_digit = 1,
@@ -23,7 +25,10 @@ coverage_plot(
   arrow_col = "black",
   range_pos = c(0.9, 0.9),
   exon_col = "black",
-  exon_linewidth = 3
+  exon_linewidth = 3,
+  add_backsqure = TRUE,
+  add_gene_label = TRUE,
+  gene_label_size = 1
 )
 }
 \arguments{
@@ -40,11 +45,18 @@ If NULL, the BAM filenames are used.}
 \item{target_gene}{A character vector of one or more target gene names (e.g., from the \code{gene_name}
 attribute in the GTF) to visualize.}
 
+\item{target_region}{A character vector specifying genomic regions in the format
+"chr:start-end" (e.g., "chr1:1000000-2000000"). Defaults to NULL. Either \code{target_gene}
+or \code{target_region} must be provided.}
+
 \item{sample_order}{A character vector to specify the display order of samples in the facets.}
 
 \item{group_order}{A character vector to specify the display order of groups in the facets.}
 
 \item{gene_order}{A character vector to specify the display order of genes in the facets.}
+
+\item{region_order}{A character vector to specify the display order of regions in the facets.
+Defaults to NULL.}
 
 \item{merge_group}{Logical. If \code{TRUE}, RPM values for samples within the same group are
 averaged and displayed as a single group track. Defaults to \code{FALSE}.}
@@ -77,6 +89,14 @@ Defaults to "black".}
 Defaults to "black".}
 
 \item{exon_linewidth}{Numeric. The line width of the exon segments. Defaults to 3.}
+
+\item{add_backsqure}{Logical. If \code{TRUE}, adds a background box to gene labels when
+\code{target_region} is used. Uses \code{geom_label()} instead of \code{geom_text()}. Defaults to \code{TRUE}.}
+
+\item{add_gene_label}{Logical. If \code{TRUE}, adds gene name labels to the gene structure
+track when using \code{target_region}. Defaults to \code{TRUE}.}
+
+\item{gene_label_size}{Numeric. The size of the gene name labels. Defaults to 1.}
 }
 \value{
 A \code{ggplot} object, which can be printed to display the plot or modified

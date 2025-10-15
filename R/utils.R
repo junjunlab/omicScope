@@ -394,3 +394,67 @@ surv_cutpoint <- function(data, time = "time", event = "event", variables,
     else res <- colnames(data_frame[, !is_numeric, drop = FALSE])
     res
 }
+
+
+
+
+get_trans_pos <- function(strc = NULL){
+    # Calculate gene-level genomic spans
+    gene_spans <- strc |>
+        dplyr::group_by(gene_name) |>
+        dplyr::summarise(
+            gene_start = min(start),
+            gene_end = max(end),
+            gene_span = max(end) - min(start)) |>
+        arrange(gene_start)
+
+    # Calculate transcript-level spans
+    transcript_spans <- strc %>%
+        dplyr::group_by(gene_name, transcript_id) |>
+        dplyr::summarise(trans_start = min(start),
+                         trans_end = max(end),
+                         trans_span = max(end) - min(start),
+                         .groups = "drop")  |>
+        dplyr::left_join(gene_spans, by = "gene_name") |>
+        dplyr::arrange(dplyr::desc(gene_span), gene_name, dplyr::desc(trans_span))
+
+    # Assign tracks to avoid overlaps
+    assign_tracks <- function(spans_df) {
+        spans_df$track <- NA
+
+        for (i in 1:nrow(spans_df)) {
+            current_start <- spans_df$trans_start[i]
+            current_end <- spans_df$trans_end[i]
+
+            # Find available track
+            track_num <- max(c(spans_df$track[!is.na(spans_df$track)], 0)) + 1
+
+            # Check if this track is free for current transcript
+            for (t in track_num:1) {
+                overlaps <- spans_df %>%
+                    filter(!is.na(track), track == t) %>%
+                    filter(trans_end >= current_start & trans_start <= current_end)
+
+                if (nrow(overlaps) == 0) {
+                    track_num <- t
+                } else {
+                    break
+                }
+            }
+
+            spans_df$track[i] <- track_num
+        }
+        return(spans_df)
+    }
+
+    # Assign tracks to transcripts
+    transcript_spans <- assign_tracks(transcript_spans)
+
+    max_track <- max(transcript_spans$track)
+    transcript_spans <- transcript_spans |>
+        dplyr::mutate(transcript_rank = max_track - track + 1) |>
+        dplyr::select(gene_name, transcript_id, transcript_rank) |>
+        dplyr::mutate(y_max = max(transcript_rank))
+
+    return(transcript_spans)
+}
