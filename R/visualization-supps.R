@@ -210,12 +210,19 @@ coverage_plot <- function(bam_file = NULL,
 
             total_reads <- sum(Rsamtools::idxstatsBam(bam_file[x])$mapped)
 
+            # gene region
+            rg <- GenomicRanges::GRanges(
+                seqnames = GenomicRanges::seqnames(fts)[1],
+                ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
+                                          end = max(GenomicRanges::end(fts))),
+                strand = GenomicRanges::strand(fts)[1])
+
             pileup_result <- Rsamtools::pileup(
                 file = Rsamtools::BamFile(bam_file[x]),
                 pileupParam = Rsamtools::PileupParam(distinguish_nucleotides = FALSE,
                                                      distinguish_strands = FALSE,
                                                      max_depth = 10^8),
-                scanBamParam = Rsamtools::ScanBamParam(which = fts)) |>
+                scanBamParam = Rsamtools::ScanBamParam(which = rg)) |>
                 dplyr::select(-which_label)
 
             # check data
