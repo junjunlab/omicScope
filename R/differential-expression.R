@@ -346,7 +346,7 @@ setMethod("differential_expression",
               sdata <- list(diff.res)
               names(sdata) <- contrastName
 
-              object@diffExpData[[method]] <- sdata
+              object@diffExpData[[method]][contrastName] <- sdata
 
               return(object)
           }
