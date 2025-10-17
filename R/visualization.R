@@ -82,16 +82,23 @@ setMethod("dim_plot",
                                     check.names = FALSE,
                                     stringsAsFactors = T)
 
+              if(coldata$sample[1] == coldata$sample_name[1]){
+                  iby <- "sample"
+              }else{
+                  iby <- c("sample_name" = "sample")
+              }
+
               # do reduction
               if(reduction == "pca"){
                   data <- object@reduction[["pca"]]
 
                   # The PC scores are stored in the "x" value of the prcomp object
                   pc_scores <- data.frame(data$x, check.names = FALSE)
+
                   pc_scores$sample <- rownames(pc_scores)
 
                   pc_scores <- coldata |>
-                      dplyr::inner_join(y = pc_scores, by = "sample")
+                      dplyr::inner_join(y = pc_scores, by = iby)
 
                   variance <- data$sdev^2
                   variance_percent <- variance / sum(variance) * 100
@@ -106,7 +113,7 @@ setMethod("dim_plot",
                   pc_scores$sample <- rownames(pc_scores)
 
                   pc_scores <- coldata |>
-                      dplyr::inner_join(y = pc_scores, by = "sample")
+                      dplyr::inner_join(y = pc_scores, by = iby)
 
                   xlb <- "UMAP 1"; ylb <- "UMAP 2"
               }else if(reduction == "tsne"){
@@ -118,7 +125,7 @@ setMethod("dim_plot",
                   pc_scores$sample <- data$rowname
 
                   pc_scores <- coldata |>
-                      dplyr::inner_join(y = pc_scores, by = "sample")
+                      dplyr::inner_join(y = pc_scores, by = iby)
 
                   xlb <- "TSNE 1"; ylb <- "TSNE 2"
               }
