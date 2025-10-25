@@ -4,11 +4,21 @@
 \name{DataSet}
 \alias{DataSet}
 \alias{counts}
+\alias{ic}
+\alias{exp.anno}
 \title{Test data for this package}
 \format{
-A matrix.
+A data frame.
+
+A data frame.
+
+A data frame.
 }
 \description{
+Test data for this package
+
+Test data for this package
+
 Test data for this package
 }
 \keyword{datasets}

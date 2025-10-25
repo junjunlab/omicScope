@@ -458,3 +458,5 @@ get_trans_pos <- function(strc = NULL){
 
     return(transcript_spans)
 }
+
+

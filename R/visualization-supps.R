@@ -499,3 +499,136 @@ coverage_plot <- function(bam_file = NULL,
     return(p)
 }
 
+
+
+
+
+
+#' Generate Correlation Plot Between Gene Expression and Drug IC50
+#'
+#' This function creates correlation plots showing the relationship between
+#' gene expression levels and drug IC50 values using GDSC (Genomics of Drug
+#' Sensitivity in Cancer) data.
+#'
+#' @param select_gene Character string. Name of the gene to analyze. Must match
+#'   gene names in the expression dataset.
+#' @param drug_name Character string. Name of the drug to analyze. Must match
+#'   drug names in the IC50 dataset. Use \code{check_dugs()} to see available drugs.
+#' @param point_col Character string. Color for scatter plot points.
+#'   Default is "#ED3500" (red).
+#' @param point_size Numeric. Size of scatter plot points. Default is 1.
+#' @param lm_col Character string. Color for the linear regression line.
+#'   Default is "#0A5EB0" (blue).
+#'
+#' @return A ggplot2 object showing the correlation between gene expression
+#'   (log2 transformed) and drug IC50 values (log2 transformed). The plot
+#'   includes scatter points, linear regression line, and correlation statistics.
+#'
+#' @details
+#' The function performs the following steps:
+#' \itemize{
+#'   \item Loads IC50 and gene expression data
+#'   \item Filters data for the specified gene and drug
+#'   \item Matches samples between expression and IC50 datasets
+#'   \item Creates scatter plot with log2 transformed values
+#'   \item Adds linear regression line and correlation statistics
+#' }
+#'
+#' Both gene expression and IC50 values are log2 transformed with +1 added
+#' to handle zero values. IC50 values are converted from natural log to
+#' original scale before log2 transformation.
+#'
+#'
+#'
+#' @export
+#' @examples
+#' \dontrun{
+#' # First check available drugs
+#' check_dugs()
+#' # load ic50 data
+#' data("ic.rda")
+#'
+#' # load gene expression data
+#' data("exp.anno.rda")
+#'
+#' # Create correlation plot
+#' gdsc_corplot(select_gene = "TP53",
+#'              drug_name = "Cisplatin",
+#'              point_col = "#ED3500",
+#'              point_size = 1.5,
+#'              lm_col = "#0A5EB0")
+#' }
+gdsc_corplot <- function(select_gene = NULL,
+                         drug_name = NULL,
+                         point_col = "#ED3500",point_size = 1,
+                         lm_col = "#0A5EB0"){
+    # filter
+    ic.fl <- ic |>
+        dplyr::filter(COSMIC_ID %in% colnames(exp.anno)[3:ncol(exp.anno)]) |>
+        dplyr::select(COSMIC_ID,DRUG_NAME,LN_IC50) |>
+        dplyr::filter(DRUG_NAME == drug_name)
+
+    ov <- intersect(ic.fl$COSMIC_ID,colnames(exp.anno)[3:ncol(exp.anno)])
+
+    ic.fl <- ic.fl |> dplyr::filter(COSMIC_ID %in% ov)
+    ic.fl$COSMIC_ID <- as.character(ic.fl$COSMIC_ID)
+
+    exp.fl <- exp.anno[,c("gene_id","gene_name",ov)]
+    exp.fl <- exp.anno |>
+        dplyr::filter(gene_name == select_gene)
+
+    # to df
+    rw <- nrow(exp.fl)
+
+    # x = 1
+    lapply(1:rw,function(x){
+        tmp <- exp.fl[x,]
+
+        df <- data.frame(id = colnames(tmp)[3:ncol(tmp)],
+                         exp = as.numeric(tmp[,3:ncol(tmp)]),
+                         row.names = NULL) |>
+            tibble::column_to_rownames(var = "id")
+        colnames(df)[1] <- paste0(tmp$gene_name," (",tmp$gene_id,")")
+
+        return(df)
+    }) %>% do.call("cbind",.) %>%
+        data.frame(check.names = FALSE) -> res
+
+    res <- res |>
+        tibble::rownames_to_column(var = "id")
+
+    res <- res |>
+        dplyr::inner_join(y = ic.fl,by = c("id" = "COSMIC_ID")) |>
+        dplyr::mutate(ic50 = exp(1)^LN_IC50)
+
+    # ============================================================================
+    # plot
+    nm <- colnames(res)[2:(ncol(res)-3)]
+
+    # x = 1
+    lapply(seq_along(nm),function(x){
+        tmp2 <- res[,c(nm,"id", "ic50")]
+        tmp2$drug <- drug_name
+
+        p <-
+            ggplot(tmp2,aes(x = log2(.data[[nm[x]]] + 1),y = log2(ic50 + 1))) +
+            geom_point(color = point_col,size = point_size) +
+            geom_smooth(method = "lm",color = lm_col) +
+            facet_wrap(~drug) +
+            ggpubr::stat_cor() +
+            theme_bw() +
+            theme(panel.grid = element_blank(),
+                  aspect.ratio = 1,
+                  strip.text = element_text(face = "bold",size = rel(1)),
+                  axis.text = element_text(colour = "black")) +
+            # xlab(paste0(nm[x]," expression \n (log2(rpkm+1))")) +
+            # ylab(paste0(drug_name, "IC50 (log2(μM+1))"))
+            xlab(bquote(atop(.(nm[x]), "expression" ~ log[2](rpkm+1)))) +
+            ylab(bquote(IC[50] ~ (log[2](μM+1))))
+
+        return(p)
+    }) -> plist
+
+    cowplot::plot_grid(plotlist = plist)
+
+}

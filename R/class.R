@@ -7,7 +7,8 @@ globalVariables(c("FDR", "P.Value", "PC1", "PC2", "PValue", "adj.P.Val", "gene_n
                   ".", "end", "exon_length", "label", "pos", "rpm", "strand", "target_genes",
                   "transcript_id", "transcript_length", "transcript_rank", "which_label",
                   "x", "xend", "y_max","gene_span", "gene_start", "track", "trans_end",
-                  "trans_span", "trans_start"))
+                  "trans_span", "trans_start","ic50","COSMIC_ID","DRUG_NAME","LN_IC50",
+                  "exp.anno", "ic"))
 
 
 
