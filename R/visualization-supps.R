@@ -33,6 +33,9 @@
 #'   Defaults to `FALSE`.
 #' @param collapse_exon Logical. If `TRUE`, all transcripts of a gene are collapsed
 #'   into a single, flattened gene model for display. Defaults to `FALSE`.
+#' @param show_utr Logical. If `TRUE` (default), the gene model will visually distinguish
+#'   between CDS (thicker lines) and UTR (thinner lines) regions. If `FALSE`, all exons
+#'   will be displayed with the same thickness.
 #' @param arrow_length Numeric. Controls the size of the arrowhead for the transcript
 #'   direction arrows. Defaults to 1.2.
 #' @param arrow_linewidth Numeric. Controls the line width of the transcript direction
@@ -121,7 +124,7 @@ coverage_plot <- function(bam_file = NULL,
                           merge_group = FALSE,
                           add_range_label = FALSE, range_digit = 1,
                           remove_labelY = FALSE,
-                          collapse_exon = FALSE,
+                          collapse_exon = FALSE, show_utr = TRUE,
                           arrow_length = 1.2, arrow_linewidth = 0.3, arrow_col = "black",
                           range_pos = c(0.9, 0.9),
                           exon_col = "black", exon_linewidth = 3,
@@ -263,9 +266,17 @@ coverage_plot <- function(bam_file = NULL,
     # ==========================================================================
     # prepare plot data
     if(is.null(target_region)){
-        strc <- exon |>
+
+        if(show_utr == TRUE){
+            strc <- subset(gtf, type %in% c("CDS","five_prime_utr", "three_prime_utr","5UTR","3UTR"))
+        }else{
+            strc <- exon
+        }
+
+
+        strc <- strc |>
             dplyr::filter(gene_name %in% target_gene) |>
-            dplyr::select(seqnames,start,end,gene_name,transcript_id) |>
+            dplyr::select(seqnames,start,end,gene_name,transcript_id,type) |>
             dplyr::mutate(sample = "Gene structure",group = "Gene structure")
 
         tid <- gtf |>
@@ -305,9 +316,15 @@ coverage_plot <- function(bam_file = NULL,
             st <- sapply(strsplit(tmp,split = "-"), "[",1) |> as.numeric()
             ed <- sapply(strsplit(tmp,split = "-"), "[",2) |> as.numeric()
 
-            strc <- exon |>
+            if(show_utr == TRUE){
+                strc <- subset(gtf, type %in% c("CDS","five_prime_utr", "three_prime_utr","5UTR","3UTR"))
+            }else{
+                strc <- exon
+            }
+
+            strc <- strc |>
                 dplyr::filter(seqnames == chr & start >= st & end <= ed) |>
-                dplyr::select(seqnames,start,end,gene_name,transcript_id) |>
+                dplyr::select(seqnames,start,end,gene_name,transcript_id,type) |>
                 dplyr::mutate(sample = "Gene structure",group = "Gene structure")
             strc$target_region <- target_region[x]
 
@@ -426,12 +443,29 @@ coverage_plot <- function(bam_file = NULL,
                                         arrow_mid = ggarrow::arrow_head_line(),
                                         mid_place = seq(0,1,0.1),
                                         length = arrow_length,
-                                        linewidth = arrow_linewidth) +
-            # exon layer
-            geom_segment(data = strc,
-                         aes(x = start, xend = end,y = 1, yend = 1),
-                         color = exon_col,
-                         linewidth = exon_linewidth)
+                                        linewidth = arrow_linewidth)
+
+        if(show_utr == TRUE){
+            p <- p +
+                # CDS layer
+                geom_segment(data = subset(strc, type == "CDS"),
+                             aes(x = start, xend = end,y = 1, yend = 1),
+                             color = exon_col,
+                             linewidth = exon_linewidth) +
+                # UTR layer
+                geom_segment(data = subset(strc, type != "CDS"),
+                             aes(x = start, xend = end,y = 1, yend = 1),
+                             color = exon_col,
+                             linewidth = exon_linewidth/2)
+        }else{
+            p <- p +
+                # exon layer
+                geom_segment(data = strc,
+                             aes(x = start, xend = end,y = 1, yend = 1),
+                             color = exon_col,
+                             linewidth = exon_linewidth)
+        }
+
     }else{
 
         p <- p +
@@ -442,12 +476,29 @@ coverage_plot <- function(bam_file = NULL,
                                         arrow_mid = ggarrow::arrow_head_line(),
                                         mid_place = seq(0,1,0.1),
                                         length = arrow_length,
-                                        linewidth = arrow_linewidth) +
-            # exon layer
-            geom_segment(data = strc,
-                         aes(x = start, xend = end,y = transcript_rank, yend = transcript_rank),
-                         color = exon_col,
-                         linewidth = exon_linewidth)
+                                        linewidth = arrow_linewidth)
+
+        if(show_utr == TRUE){
+            p <- p +
+                # CDS layer
+                geom_segment(data = subset(strc, type == "CDS"),
+                             aes(x = start, xend = end,y = transcript_rank, yend = transcript_rank),
+                             color = exon_col,
+                             linewidth = exon_linewidth) +
+                # UTR layer
+                geom_segment(data = subset(strc, type != "CDS"),
+                             aes(x = start, xend = end,y = transcript_rank, yend = transcript_rank),
+                             color = exon_col,
+                             linewidth = exon_linewidth/2)
+        }else{
+            p <- p +
+                # exon layer
+                geom_segment(data = strc,
+                             aes(x = start, xend = end,y = transcript_rank, yend = transcript_rank),
+                             color = exon_col,
+                             linewidth = exon_linewidth)
+        }
+
     }
 
 

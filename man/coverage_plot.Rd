@@ -21,6 +21,7 @@ coverage_plot(
   range_digit = 1,
   remove_labelY = FALSE,
   collapse_exon = FALSE,
+  show_utr = TRUE,
   arrow_length = 1.2,
   arrow_linewidth = 0.3,
   arrow_col = "black",
@@ -79,6 +80,10 @@ Defaults to \code{FALSE}.}
 
 \item{collapse_exon}{Logical. If \code{TRUE}, all transcripts of a gene are collapsed
 into a single, flattened gene model for display. Defaults to \code{FALSE}.}
+
+\item{show_utr}{Logical. If \code{TRUE} (default), the gene model will visually distinguish
+between CDS (thicker lines) and UTR (thinner lines) regions. If \code{FALSE}, all exons
+will be displayed with the same thickness.}
 
 \item{arrow_length}{Numeric. Controls the size of the arrowhead for the transcript
 direction arrows. Defaults to 1.2.}
