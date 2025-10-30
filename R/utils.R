@@ -460,3 +460,123 @@ get_trans_pos <- function(strc = NULL){
 }
 
 
+get_cov <- function(bam_file = NULL, bw_file = NULL,
+                    query_region = NULL, target_region = NULL,
+                    genes = NULL,
+                    sample_name = NULL, group_name = NULL){
+    if(!is.null(bam_file)){
+        lapply(seq_along(bam_file),function(x){
+            lapply(seq_along(genes),function(g){
+                if(!is.null(target_region)){
+                    fts <- subset(query_region, target_region == genes[g])
+                }else{
+                    fts <- subset(query_region, gene_name == genes[g])
+                }
+
+
+                # check index file for bam
+                if(!file.exists(paste(bam_file[x],"bai",sep = "."))){
+                    Rsamtools::indexBam(bam_file[x], nThreads = parallel::detectCores())
+                }
+
+                total_reads <- sum(Rsamtools::idxstatsBam(bam_file[x])$mapped)
+
+                # gene region
+                rg <- GenomicRanges::GRanges(
+                    seqnames = GenomicRanges::seqnames(fts)[1],
+                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
+                                              end = max(GenomicRanges::end(fts))),
+                    strand = GenomicRanges::strand(fts)[1])
+
+                pileup_result <- Rsamtools::pileup(
+                    file = Rsamtools::BamFile(bam_file[x]),
+                    pileupParam = Rsamtools::PileupParam(distinguish_nucleotides = FALSE,
+                                                         distinguish_strands = FALSE,
+                                                         max_depth = 10^8),
+                    scanBamParam = Rsamtools::ScanBamParam(which = rg)) |>
+                    dplyr::select(-which_label)
+
+                # check data
+                if(nrow(pileup_result) == 0){
+                    pileup_result <- data.frame(seqnames = GenomicRanges::seqnames(fts) |> unique(),
+                                                pos = GenomicRanges::start(fts)[1],
+                                                count = 0)
+                }
+
+                pileup_result$sample <- sample_name[x]
+                pileup_result$group <- group_name[x]
+                if(!is.null(target_region)){
+                    pileup_result$target_region <- genes[g]
+                }else{
+                    pileup_result$gene_name <- genes[g]
+                }
+
+                pileup_result$rpm <- (pileup_result$count/total_reads)*10^6
+
+                return(pileup_result)
+            }) %>% do.call("rbind",.) |> data.frame(check.names = FALSE) -> res
+
+            return(res)
+        }) %>% do.call("rbind",.) |>
+            data.frame(check.names = FALSE) -> cov.res
+    }else{
+        lapply(seq_along(bw_file),function(x){
+            lapply(seq_along(genes),function(g){
+                if(!is.null(target_region)){
+                    fts <- subset(query_region, target_region == genes[g])
+                }else{
+                    fts <- subset(query_region, gene_name == genes[g])
+                }
+
+
+                # gene region
+                rg <- GenomicRanges::GRanges(
+                    seqnames = GenomicRanges::seqnames(fts)[1],
+                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
+                                              end = max(GenomicRanges::end(fts))),
+                    strand = GenomicRanges::strand(fts)[1])
+
+                # load bw file and filter cov region
+                gr <- rtracklayer::import.bw(bw_file[x]) |>
+                    data.frame() |>
+                    dplyr::filter(seqnames == as.character(rg@seqnames) &
+                                      start >= IRanges::start(rg) & end <= IRanges::end(rg)) |>
+                    dplyr::select(seqnames,start,end,score) |>
+                    dplyr::rename(rpm = score) |>
+                    GenomicRanges::GRanges()
+
+                # to single base format
+                tiles <- IRanges::tile(gr, width = 1)
+                single_base_gr <- unlist(tiles)
+                rpm <- rep(S4Vectors::mcols(gr)$rpm, S4Vectors::elementNROWS(tiles))
+                S4Vectors::mcols(single_base_gr)$rpm <- rpm
+                pileup_result <- as.data.frame(single_base_gr) |>
+                    dplyr::select(seqnames,start,rpm) |>
+                    dplyr::rename(pos = start)
+
+                # check data
+                if(nrow(pileup_result) == 0){
+                    pileup_result <- data.frame(seqnames = GenomicRanges::seqnames(fts) |> unique(),
+                                                pos = GenomicRanges::start(fts)[1],
+                                                rpm = 0)
+                }
+
+                pileup_result$sample <- sample_name[x]
+                pileup_result$group <- group_name[x]
+                if(!is.null(target_region)){
+                    pileup_result$target_region <- genes[g]
+                }else{
+                    pileup_result$gene_name <- genes[g]
+                }
+
+                return(pileup_result)
+            }) %>% do.call("rbind",.) |> data.frame(check.names = FALSE) -> res
+
+            return(res)
+        }) %>% do.call("rbind",.) |>
+            data.frame(check.names = FALSE) -> cov.res
+    }
+
+    return(cov.res)
+}
+

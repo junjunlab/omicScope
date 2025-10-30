@@ -57,5 +57,6 @@ Suggests:
     maxstat,
     ggpubr,
     ggh4x,
-    ggarrow
+    ggarrow,
+    ggnewscale
 VignetteBuilder: knitr

@@ -7,8 +7,9 @@
 #' compare profiles across different samples/groups and genes.
 #'
 #' @param bam_file A character vector of paths to one or more BAM files.
-#' @param sample_name A character vector providing sample names for each BAM file.
-#'   If NULL, the BAM filenames are used.
+#' @param bw_file A character vector of paths to one or more bigwig files.
+#' @param sample_name A character vector providing sample names for each BAM/bigwig file.
+#'   If NULL, the BAM/bigwig filenames are used.
 #' @param group_name A character vector assigning a group to each sample.
 #'   If NULL, the BAM filenames are used.
 #' @param gtf_file Path to a GTF file or a `GRanges` object containing gene annotations.
@@ -48,6 +49,17 @@
 #' @param add_gene_label Logical. If `TRUE`, adds gene name labels to the gene structure
 #'   track when using `target_region`. Defaults to `TRUE`.
 #' @param gene_label_size Numeric. The size of the gene name labels. Defaults to 1.
+#' @param highlight_region A data frame containing regions to be highlighted
+#'   on the plot. The object must include `start` and `end` columns. This allows for overlaying
+#'   colored bands to mark specific features (e.g., peaks, motifs, domains). Defaults to `NULL`.
+#' @param highlight_col_aes A character string specifying the column in `highlight_region` data
+#'   to use for the `fill` aesthetic. This enables different regions to be colored based on a
+#'   categorical variable. Defaults to `"seqnames"`.
+#' @param highlight_col A named character vector specifying the colors to use for the fill
+#'   scale of the highlighted regions. The names should correspond to the unique values in the
+#'   `highlight_col_aes` column. If `NULL` (default), the default ggplot2 color scale is used.
+#' @param highlight_alpha Numeric. The transparency of the highlighted region fill, ranging from
+#'   0 (fully transparent) to 1 (fully opaque). Defaults to `0.2`.
 #'
 #'
 #' @return A `ggplot` object, which can be printed to display the plot or modified
@@ -98,6 +110,7 @@
 #' print(p_merged)
 #' }
 coverage_plot <- function(bam_file = NULL,
+                          bw_file = NULL,
                           sample_name = NULL,
                           group_name = NULL,
                           gtf_file = NULL,
@@ -113,7 +126,9 @@ coverage_plot <- function(bam_file = NULL,
                           range_pos = c(0.9, 0.9),
                           exon_col = "black", exon_linewidth = 3,
                           add_backsqure = TRUE,
-                          add_gene_label = TRUE, gene_label_size = 1){
+                          add_gene_label = TRUE, gene_label_size = 1,
+                          highlight_region = NULL,
+                          highlight_col_aes = "seqnames", highlight_col = NULL, highlight_alpha = 0.2){
     # ==========================================================================
     # check package needed
     if (!requireNamespace(c("ggh4x","ggarrow"), quietly = TRUE)) {
@@ -182,72 +197,43 @@ coverage_plot <- function(bam_file = NULL,
         genes <- unique(query_region$gene_name)
     }
 
+    if(!is.null(bam_file)){
+        # check sample_name
+        if(is.null(sample_name)){
+            sample_name <- bam_file
+        }
 
-    # check sample_name
-    if(is.null(sample_name)){
-        sample_name <- bam_file
+        if(is.null(group_name)){
+            group_name <- bam_file
+        }
+
+        cov.res <- get_cov(bam_file = bam_file,
+                           target_region = target_region,
+                           query_region = query_region,
+                           genes = genes,
+                           sample_name = sample_name, group_name = group_name)
+
+        ylb <- "Reads coverage (rpm)"
+    }else{
+        # check sample_name
+        if(is.null(sample_name)){
+            sample_name <- bw_file
+        }
+
+        if(is.null(group_name)){
+            group_name <- bw_file
+        }
+
+        cov.res <- get_cov(bw_file = bw_file,
+                           target_region = target_region,
+                           query_region = query_region,
+                           genes = genes,
+                           sample_name = sample_name, group_name = group_name)
+
+        ylb <- "Normalized reads coverage"
     }
 
-    if(is.null(group_name)){
-        group_name <- bam_file
-    }
 
-    # x = 1
-    # g = 1
-    lapply(seq_along(bam_file),function(x){
-        lapply(seq_along(genes),function(g){
-            if(!is.null(target_region)){
-                fts <- subset(query_region, target_region == genes[g])
-            }else{
-                fts <- subset(query_region, gene_name == genes[g])
-            }
-
-
-            # check index file for bam
-            if(!file.exists(paste(bam_file[x],"bai",sep = "."))){
-                Rsamtools::indexBam(bam_file[x], nThreads = parallel::detectCores())
-            }
-
-            total_reads <- sum(Rsamtools::idxstatsBam(bam_file[x])$mapped)
-
-            # gene region
-            rg <- GenomicRanges::GRanges(
-                seqnames = GenomicRanges::seqnames(fts)[1],
-                ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
-                                          end = max(GenomicRanges::end(fts))),
-                strand = GenomicRanges::strand(fts)[1])
-
-            pileup_result <- Rsamtools::pileup(
-                file = Rsamtools::BamFile(bam_file[x]),
-                pileupParam = Rsamtools::PileupParam(distinguish_nucleotides = FALSE,
-                                                     distinguish_strands = FALSE,
-                                                     max_depth = 10^8),
-                scanBamParam = Rsamtools::ScanBamParam(which = rg)) |>
-                dplyr::select(-which_label)
-
-            # check data
-            if(nrow(pileup_result) == 0){
-                pileup_result <- data.frame(seqnames = GenomicRanges::seqnames(fts) |> unique(),
-                                            pos = GenomicRanges::start(fts)[1],
-                                            count = 0)
-            }
-
-            pileup_result$sample <- sample_name[x]
-            pileup_result$group <- group_name[x]
-            if(!is.null(target_region)){
-                pileup_result$target_region <- genes[g]
-            }else{
-                pileup_result$gene_name <- genes[g]
-            }
-
-            pileup_result$rpm <- (pileup_result$count/total_reads)*10^6
-
-            return(pileup_result)
-        }) %>% do.call("rbind",.) |> data.frame(check.names = FALSE) -> res
-
-        return(res)
-    }) %>% do.call("rbind",.) |>
-        data.frame(check.names = FALSE) -> cov.res
 
     # check prefix for seqname
     bm <- startsWith(as.character(cov.res$seqnames[1]),"chr")
@@ -369,11 +355,15 @@ coverage_plot <- function(bam_file = NULL,
     # ==========================================================================
     # orders
     if(!is.null(sample_order)){
-        cov.strc$sample <- factor(cov.strc$sample, levels = c(sample_order,"Gene structure"))
-        rg$sample <- factor(rg$sample, levels = sample_order)
-        tid$sample <- factor(tid$sample, levels = c(sample_order,"Gene structure"))
-        strc$sample <- factor(strc$sample, levels = c(sample_order,"Gene structure"))
+        lvs <- c(sample_order,"Gene structure")
+    }else{
+        lvs <- c(sample_name,"Gene structure")
     }
+
+    cov.strc$sample <- factor(cov.strc$sample, levels = lvs)
+    rg$sample <- factor(rg$sample, levels = lvs[1:(length(lvs)-1)])
+    tid$sample <- factor(tid$sample, levels = lvs)
+    strc$sample <- factor(strc$sample, levels = lvs)
 
     if(!is.null(group_order)){
         cov.strc$group <- factor(cov.strc$group, levels = c(group_order,"Gene structure"))
@@ -405,6 +395,22 @@ coverage_plot <- function(bam_file = NULL,
         geom_rect(aes(xmin = pos - 0.5,xmax = pos + 0.5, ymin = 0,ymax = rpm,
                       fill = .data[[var]],color = .data[[var]]),
                   show.legend = FALSE)
+
+    # check highlight region
+    if(!is.null(highlight_region)){
+        p <- p +
+            ggnewscale::new_scale_fill() +
+            geom_rect(data = highlight_region,
+                      aes(xmin = start,xmax = end,ymin = -Inf,ymax = Inf,
+                          fill = .data[[highlight_col_aes]]),alpha = highlight_alpha)
+
+        if(!is.null(highlight_col)){
+            p <- p +
+                scale_fill_manual(values = highlight_col)
+        }
+    }
+
+
 
     if(collapse_exon == TRUE){
         tid2 <- tid |>
@@ -478,7 +484,7 @@ coverage_plot <- function(bam_file = NULL,
               strip.text.y = element_text(face = "bold",hjust = 1),
               strip.text.y.left = element_text(angle = 0),
               axis.text = element_text(colour = "black")) +
-        xlab("Genomic coordinate (kb)") + ylab("Reads coverage (rpm)")
+        xlab("Genomic coordinate (kb)") + ylab(ylb)
 
     # check range label
     if(add_range_label == TRUE){
@@ -624,7 +630,7 @@ gdsc_corplot <- function(select_gene = NULL,
             # xlab(paste0(nm[x]," expression \n (log2(rpkm+1))")) +
             # ylab(paste0(drug_name, "IC50 (log2(μM+1))"))
             xlab(bquote(atop(.(nm[x]), "expression" ~ log[2](rpkm+1)))) +
-            ylab(bquote(IC[50] ~ (log[2](μM+1))))
+            ylab(bquote(IC[50] ~ (log[2]("\u03BC"*M+1))))
 
         return(p)
     }) -> plist

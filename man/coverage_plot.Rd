@@ -6,6 +6,7 @@
 \usage{
 coverage_plot(
   bam_file = NULL,
+  bw_file = NULL,
   sample_name = NULL,
   group_name = NULL,
   gtf_file = NULL,
@@ -28,14 +29,20 @@ coverage_plot(
   exon_linewidth = 3,
   add_backsqure = TRUE,
   add_gene_label = TRUE,
-  gene_label_size = 1
+  gene_label_size = 1,
+  highlight_region = NULL,
+  highlight_col_aes = "seqnames",
+  highlight_col = NULL,
+  highlight_alpha = 0.2
 )
 }
 \arguments{
 \item{bam_file}{A character vector of paths to one or more BAM files.}
 
-\item{sample_name}{A character vector providing sample names for each BAM file.
-If NULL, the BAM filenames are used.}
+\item{bw_file}{A character vector of paths to one or more bigwig files.}
+
+\item{sample_name}{A character vector providing sample names for each BAM/bigwig file.
+If NULL, the BAM/bigwig filenames are used.}
 
 \item{group_name}{A character vector assigning a group to each sample.
 If NULL, the BAM filenames are used.}
@@ -97,6 +104,21 @@ Defaults to "black".}
 track when using \code{target_region}. Defaults to \code{TRUE}.}
 
 \item{gene_label_size}{Numeric. The size of the gene name labels. Defaults to 1.}
+
+\item{highlight_region}{A data frame containing regions to be highlighted
+on the plot. The object must include \code{start} and \code{end} columns. This allows for overlaying
+colored bands to mark specific features (e.g., peaks, motifs, domains). Defaults to \code{NULL}.}
+
+\item{highlight_col_aes}{A character string specifying the column in \code{highlight_region} data
+to use for the \code{fill} aesthetic. This enables different regions to be colored based on a
+categorical variable. Defaults to \code{"seqnames"}.}
+
+\item{highlight_col}{A named character vector specifying the colors to use for the fill
+scale of the highlighted regions. The names should correspond to the unique values in the
+\code{highlight_col_aes} column. If \code{NULL} (default), the default ggplot2 color scale is used.}
+
+\item{highlight_alpha}{Numeric. The transparency of the highlighted region fill, ranging from
+0 (fully transparent) to 1 (fully opaque). Defaults to \code{0.2}.}
 }
 \value{
 A \code{ggplot} object, which can be printed to display the plot or modified
