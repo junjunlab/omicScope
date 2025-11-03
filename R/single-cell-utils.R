@@ -250,6 +250,7 @@ SingleFileCutMatrix <- function(
 #' @importFrom GenomeInfoDb keepSeqlevels
 #' @importFrom Rsamtools TabixFile seqnamesTabix
 #' @importFrom Signac Fragments GetFragmentData
+#' @importFrom SeuratObject DefaultAssay
 CutMatrix <- function(
         object,
         region,
