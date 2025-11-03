@@ -43,10 +43,9 @@ Imports:
     Rsamtools,
     ggbio,
     Signac,
-    GenomeInfoDb,
-    fastmatch,
-    stringi,
-    SeuratObject
+    Seurat,
+    SeuratObject,
+    GenomeInfoDb
 Enhances: 
     Rtsne,
     umap

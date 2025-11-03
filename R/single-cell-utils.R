@@ -3,361 +3,19 @@ globalVariables(c("Assay", "AverageCounts", "CellsPerGroup", "DefaultAssay", "Id
                   "hue_pal", "mcols", "mcols<-", "norm.value", "position", "roll_sum", "slice_sample",
                   "subsetByOverlaps", "theme_browser"))
 
-# SetIfNull <- getFromNamespace("SetIfNull","Signac")
-# FindRegion <- getFromNamespace("FindRegion","Signac")
-# GetGroups <- getFromNamespace("GetGroups","Signac")
-# CutMatrix <- getFromNamespace("CutMatrix","Signac")
-# ApplyMatrixByGroup <- getFromNamespace("ApplyMatrixByGroup","Signac")
-
-SetIfNull <- function(x, y) {
-    if (is.null(x = x)) {
-        return(y)
-    } else {
-        return(x)
-    }
-}
-
-FindRegion <- function(
-        object,
-        region,
-        sep = c("-", "-"),
-        assay = NULL,
-        extend.upstream = 0,
-        extend.downstream = 0) {
-    if (!methods::is(object = region, class2 = "GRanges")) {
-        # first try to convert to coordinates, if not lookup gene
-        region <- tryCatch(
-            expr = suppressWarnings(
-                expr = StringToGRanges(regions = region, sep = sep)
-            ),
-            error = function(x) {
-                region <- Signac::LookupGeneCoords(
-                    object = object,
-                    assay = assay,
-                    gene = region
-                )
-                return(region)
-            }
-        )
-        if (is.null(x = region)) {
-            stop("Gene not found")
-        }
-    }
-    region <- suppressWarnings(expr = Signac::Extend(
-        x = region,
-        upstream = extend.upstream,
-        downstream = extend.downstream
-    )
-    )
-    return(region)
-}
-
-GetGroups <- function(
-        object,
-        group.by,
-        idents) {
-    if (is.null(x = group.by)) {
-        obj.groups <- Idents(object = object)
-    } else {
-        obj.md <- object[[group.by]]
-        obj.groups <- obj.md[, 1]
-        names(obj.groups) <- rownames(x = obj.md)
-    }
-    if (!is.null(idents)) {
-        obj.groups <- obj.groups[obj.groups %in% idents]
-    }
-    return(obj.groups)
-}
-
-isRemote <- function(x) {
-    return(grepl(pattern = "^http|^ftp", x = x))
-}
-
-GetIndexFile <- function(fragment, verbose = TRUE) {
-    is.remote <- isRemote(x = fragment)
-    index.filepaths <- c(paste0(fragment, ".tbi"),
-                         paste0(fragment, ".csi"))
-    index.file <- index.filepaths[file.exists(index.filepaths)]
-    if (length(x = index.file) == 0 & !is.remote) {
-        stop("Fragment file is not indexed.")
-    } else if(length(x = index.file) == 0) {
-        if (verbose) {
-            message("Fragment file is on a remote server")
-        }
-        index.file = paste0(fragment, ".tbi")
-    } else if (length(x = index.file) == 2) {
-        if (verbose) {
-            message("TBI and CSI index both present, using TBI index")
-        }
-        index.file <- index.file[1]
-    }
-    return(index.file)
-}
-
-TabixOutputToDataFrame <- function(reads, record.ident = TRUE) {
-    if (record.ident) {
-        nrep <- S4Vectors::elementNROWS(x = reads)
-    }
-    original_names = names(reads)
-    reads <- unlist(x = reads, use.names = FALSE)
-    if (length(x = reads) == 0 | is.null(x = original_names)) {
-        df <- data.frame(
-            "chr" = "",
-            "start" = "",
-            "end" = "",
-            "cell" = "",
-            "count" = ""
-        )
-        df <- df[-1, ]
-        return(df)
-    }
-    reads <- stringi::stri_split_fixed(str = reads, pattern = "\t")
-    n <- length(x = reads[[1]])
-    unlisted <- unlist(x = reads)
-    e1 <- unlisted[n * (seq_along(along.with = reads)) - (n - 1)]
-    e2 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 2)])
-    e3 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 3)])
-    e4 <- unlisted[n * (seq_along(along.with = reads)) - (n - 4)]
-    e5 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 5)])
-    df <- data.frame(
-        "chr" = e1,
-        "start" = e2,
-        "end" = e3,
-        "cell" = e4,
-        "count" = e5,
-        stringsAsFactors = FALSE,
-        check.rows = FALSE,
-        check.names = FALSE
-    )
-    if (record.ident) {
-        df$ident <- rep(x = seq_along(along.with = nrep), nrep)
-    }
-    return(df)
-}
-
-#' @importFrom Rsamtools scanTabix
-GetReadsInRegion <- function(
-        cellmap,
-        region,
-        tabix.file,
-        cells = NULL,
-        verbose = TRUE,
-        ...) {
-    file.to.object <- names(x = cellmap)
-    names(x = file.to.object) <- cellmap
-
-    if (verbose) {
-        message("Extracting reads in requested region")
-    }
-    if (!methods::is(object = region, class2 = "GRanges")) {
-        region <- StringToGRanges(regions = region, ...)
-    }
-    # remove regions that aren't in the fragment file
-    common.seqlevels <- intersect(
-        x = GenomeInfoDb::seqlevels(x = region),
-        y = seqnamesTabix(file = tabix.file)
-    )
-    if (length(common.seqlevels) != 0) {
-        region <- keepSeqlevels(
-            x = region,
-            value = common.seqlevels,
-            pruning.mode = "coarse"
-        )
-        reads <- scanTabix(file = tabix.file, param = region)
-        reads <- TabixOutputToDataFrame(reads = reads)
-        reads <- reads[
-            fastmatch::fmatch(x = reads$cell, table = cellmap, nomatch = 0L) > 0,
-        ]
-        # convert cell names to match names in object
-        reads$cell <- file.to.object[reads$cell]
-        if (!is.null(x = cells)) {
-            reads <- reads[reads$cell %in% cells, ]
-        }
-        if (nrow(reads) == 0) {
-            reads$ident <- integer()
-            reads$length <- numeric()
-            return(reads)
-        }
-        reads$length <- reads$end - reads$start
-    } else {
-        reads <- data.frame(
-            "chr" = character(),
-            "start" = numeric(),
-            "end" = numeric(),
-            "cell" = character(),
-            "count" = numeric(),
-            "ident" = integer(),
-            "length" = numeric()
-        )
-    }
-    return(reads)
-}
-
-#' @importFrom Matrix sparseMatrix
-SingleFileCutMatrix <- function(
-        cellmap,
-        region,
-        cells = NULL,
-        tabix.file,
-        verbose = TRUE) {
-    # if multiple regions supplied, must be the same width
-    cells <- SetIfNull(x = cells, y = names(x = cellmap))
-    if (length(x = region) == 0) {
-        return(NULL)
-    }
-    fragments <- GetReadsInRegion(
-        region = region,
-        cellmap = cellmap,
-        cells = cells,
-        tabix.file = tabix.file,
-        verbose = verbose
-    )
-    start.lookup <- start(x = region)
-    names(start.lookup) <- seq_along(region)
-    # if there are no reads in the region
-    # create an empty matrix of the correct dimension
-    if (nrow(x = fragments) == 0) {
-        cut.matrix <- sparseMatrix(
-            i = NULL,
-            j = NULL,
-            dims = c(length(x = cells), width(x = region)[[1]])
-        )
-    } else {
-        fragstarts <- start.lookup[fragments$ident] + 1
-        cut.df <- data.frame(
-            position = c(fragments$start, fragments$end) - fragstarts,
-            cell = c(fragments$cell, fragments$cell),
-            stringsAsFactors = FALSE
-        )
-        cut.df <- cut.df[
-            (cut.df$position > 0) & (cut.df$position <= width(x = region)[[1]]),
-        ]
-        cell.vector <- seq_along(along.with = cells)
-        names(x = cell.vector) <- cells
-        cell.matrix.info <- cell.vector[cut.df$cell]
-        cut.matrix <- sparseMatrix(
-            i = cell.matrix.info,
-            j = cut.df$position,
-            x = 1,
-            dims = c(length(x = cells), width(x = region)[[1]])
-        )
-    }
-    rownames(x = cut.matrix) <- cells
-    colnames(x = cut.matrix) <- seq_len(width(x = region)[[1]])
-    return(cut.matrix)
-}
-
-#' @importFrom GenomeInfoDb keepSeqlevels
-#' @importFrom Rsamtools TabixFile seqnamesTabix
-#' @importFrom Signac Fragments GetFragmentData
-#' @importFrom SeuratObject DefaultAssay
-CutMatrix <- function(
-        object,
-        region,
-        group.by = NULL,
-        assay = NULL,
-        cells = NULL,
-        verbose = TRUE) {
-    # run SingleFileCutMatrix for each fragment file and combine results
-    assay <- SetIfNull(x = assay, y = DefaultAssay(object = object))
-    cells <- SetIfNull(x = cells, y = colnames(x = object))
-    fragments <- Fragments(object = object[[assay]])
-    if (length(x = fragments) == 0) {
-        stop("No fragment information found for requested assay")
-    }
-    res <- list()
-    for (i in seq_along(along.with = fragments)) {
-        fragment.path <- GetFragmentData(object = fragments[[i]], slot = "path")
-        cellmap <- GetFragmentData(object = fragments[[i]], slot = "cells")
-        tabix.file <- TabixFile(
-            file = fragment.path,
-            index = GetIndexFile(fragment = fragment.path, verbose = FALSE)
-        )
-        open(con = tabix.file)
-        # remove regions that aren't in the fragment file
-        seqnames.in.both <- intersect(
-            x = seqnames(x = region),
-            y = seqnamesTabix(file = tabix.file)
-        )
-        region <- keepSeqlevels(
-            x = region,
-            value = seqnames.in.both,
-            pruning.mode = "coarse"
-        )
-        if (length(x = region) != 0) {
-            cm <- SingleFileCutMatrix(
-                region = region,
-                cellmap = cellmap,
-                tabix.file = tabix.file,
-                cells = cells,
-                verbose = FALSE
-            )
-            res[[i]] <- cm
-        }
-        close(con = tabix.file)
-    }
-    res <- Reduce(f = `+`, x = res)
-    return(res)
-}
+SetIfNull <- getFromNamespace("SetIfNull","Signac")
+FindRegion <- getFromNamespace("FindRegion","Signac")
+GetGroups <- getFromNamespace("GetGroups","Signac")
+CutMatrix <- getFromNamespace("CutMatrix","Signac")
+ApplyMatrixByGroup <- getFromNamespace("ApplyMatrixByGroup","Signac")
+isRemote <- getFromNamespace("isRemote","Signac")
+GetIndexFile <- getFromNamespace("GetIndexFile","Signac")
+TabixOutputToDataFrame <- getFromNamespace("TabixOutputToDataFrame","Signac")
+GetReadsInRegion <- getFromNamespace("GetReadsInRegion","Signac")
+SingleFileCutMatrix <- getFromNamespace("SingleFileCutMatrix","Signac")
+UpdateChromatinObject <- getFromNamespace("UpdateChromatinObject","Signac")
 
 
-ApplyMatrixByGroup <- function(
-        mat,
-        groups,
-        fun,
-        normalize = TRUE,
-        group.scale.factors = NULL,
-        scale.factor = NULL) {
-    if (normalize) {
-        if (is.null(x = group.scale.factors) | is.null(x = scale.factor)) {
-            stop("If normalizing counts, supply group scale factors")
-        }
-    }
-    all.groups <- as.character(x = unique(x = groups))
-    if (any(is.na(x = groups))) {
-        all.groups <- c(all.groups, NA)
-    }
-    ngroup <- length(x = all.groups)
-    npos <- ncol(x = mat)
-
-    group <- unlist(
-        x = lapply(X = all.groups, FUN = function(x) rep(x, npos))
-    )
-    position <- rep(x = as.numeric(x = colnames(x = mat)), ngroup)
-    count <- vector(mode = "numeric", length = npos * ngroup)
-
-    for (i in seq_along(along.with = all.groups)) {
-        grp <- all.groups[[i]]
-        if (is.na(x = grp)) {
-            pos.cells <- names(x = groups)[is.na(x = groups)]
-        } else {
-            pos.cells <- names(x = groups)[groups == all.groups[[i]]]
-        }
-        if (length(x = pos.cells) > 1) {
-            totals <- fun(x = mat[pos.cells, ])
-        } else {
-            totals <- mat[pos.cells, ]
-        }
-        count[((i - 1) * npos + 1):((i * npos))] <- totals
-    }
-
-    # construct dataframe
-    coverages <- data.frame(
-        "group" = group, "position" = position, "count" = count,
-        stringsAsFactors = FALSE
-    )
-
-    if (normalize) {
-        scale.factor <- SetIfNull(
-            x = scale.factor, y = median(x = group.scale.factors)
-        )
-        coverages$norm.value <- coverages$count /
-            group.scale.factors[coverages$group] * scale.factor
-    } else {
-        coverages$norm.value <- coverages$count
-    }
-    return(coverages)
-}
 
 # slightly modified from Signac source code
 PeakPlot2 <- function(
@@ -376,12 +34,12 @@ PeakPlot2 <- function(
     }
 
     if (!inherits(x = region, what = "GRanges")) {
-        region <- StringToGRanges(regions = region)
+        region <- Signac::StringToGRanges(regions = region)
     }
     if (is.null(x = peaks)) {
-        peaks <- granges(x = object[[assay]])
+        peaks <- GenomicRanges::granges(x = object[[assay]])
         md <- object[[assay]][[]]
-        mcols(x = peaks) <- md
+        S4Vectors::mcols(x = peaks) <- md
     }
     region <- FindRegion(
         object = object,
@@ -392,11 +50,11 @@ PeakPlot2 <- function(
         extend.downstream = extend.downstream
     )
     # subset to covered range
-    peak.intersect <- subsetByOverlaps(x = peaks, ranges = region)
+    peak.intersect <- IRanges::subsetByOverlaps(x = peaks, ranges = region)
     peak.df <- as.data.frame(x = peak.intersect)
 
-    start.pos <- start(x = region)
-    end.pos <- end(x = region)
+    start.pos <- GenomicRanges::start(x = region)
+    end.pos <- GenomicRanges::end(x = region)
     chromosome <- GenomicRanges::seqnames(x = region)
 
     if (nrow(x = peak.df) > 0) {
@@ -455,11 +113,11 @@ CoverageTrack2 <- function(
         window = 100,
         max.downsample = 3000,
         return.data = TRUE) {
-    window.size <- width(x = region)
+    window.size <- IRanges::width(x = region)
     levels.use <- levels(x = obj.groups)
-    chromosome <- as.character(x = GenomicRanges::seqnames(x = region))
-    start.pos <- start(x = region)
-    end.pos <- end(x = region)
+    chromosome <- as.character(x = GenomeInfoDb::seqnames(x = region))
+    start.pos <- GenomicRanges::start(x = region)
+    end.pos <- GenomicRanges::end(x = region)
     multicov <- length(x = cutmat) > 1
 
     cov.df <- data.frame()
@@ -473,20 +131,20 @@ CoverageTrack2 <- function(
             normalize = TRUE
         )
         if (!is.na(x = window)) {
-            coverages <- group_by(.data = coverages, group)
-            coverages <- mutate(.data = coverages, coverage = roll_sum(
+            coverages <- dplyr::group_by(.data = coverages, group)
+            coverages <- dplyr::mutate(.data = coverages, coverage = RcppRoll::roll_sum(
                 x = norm.value, n = window, fill = NA, align = "center"
             ))
-            coverages <- ungroup(x = coverages)
+            coverages <- dplyr::ungroup(x = coverages)
         } else {
             coverages$coverage <- coverages$norm.value
         }
 
         coverages <- coverages[!is.na(x = coverages$coverage), ]
-        coverages <- group_by(.data = coverages, group)
+        coverages <- dplyr::group_by(.data = coverages, group)
         sampling <- min(max.downsample, window.size * downsample.rate)
         set.seed(seed = 1234)
-        coverages <- slice_sample(.data = coverages, n = as.integer(x = sampling))
+        coverages <- dplyr::slice_sample(.data = coverages, n = as.integer(x = sampling))
         coverages$Assay <- names(x = cutmat)[[i]]
         if (multicov) {
             if (assay.scale == "separate") {
@@ -503,7 +161,7 @@ CoverageTrack2 <- function(
 
     # restore factor levels
     if (!is.null(x = levels.use)) {
-        colors_all <- hue_pal()(length(x = levels.use))
+        colors_all <- scales::hue_pal()(length(x = levels.use))
         names(x = colors_all) <- levels.use
         coverages$group <- factor(x = coverages$group, levels = levels.use)
     }
@@ -533,84 +191,84 @@ CoverageTrack2 <- function(
 
         return(coverages)
     }else{
-        gr <- GRanges(
-            seqnames = chromosome,
-            IRanges(start = start.pos, end = end.pos)
-        )
-        if (multicov) {
-            p <- ggplot(
-                data = coverages,
-                mapping = aes(x = position, y = coverage, fill = Assay)
-            )
-        } else {
-            p <- ggplot(
-                data = coverages,
-                mapping = aes(x = position, y = coverage, fill = group)
-            )
-        }
-        p <- p +
-            geom_area(
-                stat = "identity",
-                alpha = ifelse(test = !split.assays & multicov, yes = 0.5, no = 1)) +
-            geom_hline(yintercept = 0, size = 0.1)
-        if (split.assays) {
-            p <- p +
-                facet_wrap(facets = ~assay_group, strip.position = "left", ncol = 1)
-        } else {
-            p <- p + facet_wrap(facets = ~group, strip.position = "left", ncol = 1)
-        }
-        p <- p +
-            xlab(label = paste0(chromosome, " position (bp)")) +
-            ylab(label = paste0("Normalized signal \n(range ",
-                                as.character(x = ymin), " - ",
-                                as.character(x = ymax), ")")) +
-            ylim(c(ymin, ymax)) +
-            theme_browser(legend = multicov) +
-            theme(panel.spacing.y = unit(x = 0, units = "line"))
-        if (!is.null(x = levels.use) & !multicov) {
-            p <- p + scale_fill_manual(values = colors_all)
-        }
-        if (!is.null(x = region.highlight)) {
-            if (!inherits(x = region.highlight, what = "GRanges")) {
-                warning("region.highlight must be a GRanges object")
-            } else {
-                md <- mcols(x = region.highlight)
-                if ("color" %in% colnames(x = md)) {
-                    color.use <- md$color
-                } else {
-                    color.use <- rep(x = "grey", length(x = region.highlight))
-                }
-                df <- data.frame(
-                    "start" = start(x = region.highlight),
-                    "end" = end(x = region.highlight),
-                    "color" = color.use
-                )
-                df$start <- ifelse(
-                    test = df$start < start.pos,
-                    yes = start.pos,
-                    no = df$start
-                )
-                df$end <- ifelse(
-                    test = df$end > end.pos,
-                    yes = end.pos,
-                    no = df$end
-                )
-                p <- p +
-                    geom_rect(
-                        data = df,
-                        inherit.aes = FALSE,
-                        aes_string(
-                            xmin = "start",
-                            xmax = "end",
-                            ymin = 0,
-                            ymax = ymax),
-                        fill = rep(x = df$color, length(x = unique(x = coverages$group))),
-                        color = "transparent",
-                        alpha = 0.2
-                    )
-            }
-        }
-        return(p)
+        # gr <- GenomicRanges::GRanges(
+        #     seqnames = chromosome,
+        #     IRanges::IRanges(start = start.pos, end = end.pos)
+        # )
+        # if (multicov) {
+        #     p <- ggplot(
+        #         data = coverages,
+        #         mapping = aes(x = position, y = coverage, fill = Assay)
+        #     )
+        # } else {
+        #     p <- ggplot(
+        #         data = coverages,
+        #         mapping = aes(x = position, y = coverage, fill = group)
+        #     )
+        # }
+        # p <- p +
+        #     geom_area(
+        #         stat = "identity",
+        #         alpha = ifelse(test = !split.assays & multicov, yes = 0.5, no = 1)) +
+        #     geom_hline(yintercept = 0, size = 0.1)
+        # if (split.assays) {
+        #     p <- p +
+        #         facet_wrap(facets = ~assay_group, strip.position = "left", ncol = 1)
+        # } else {
+        #     p <- p + facet_wrap(facets = ~group, strip.position = "left", ncol = 1)
+        # }
+        # p <- p +
+        #     xlab(label = paste0(chromosome, " position (bp)")) +
+        #     ylab(label = paste0("Normalized signal \n(range ",
+        #                         as.character(x = ymin), " - ",
+        #                         as.character(x = ymax), ")")) +
+        #     ylim(c(ymin, ymax)) +
+        #     theme_browser(legend = multicov) +
+        #     theme(panel.spacing.y = unit(x = 0, units = "line"))
+        # if (!is.null(x = levels.use) & !multicov) {
+        #     p <- p + scale_fill_manual(values = colors_all)
+        # }
+        # if (!is.null(x = region.highlight)) {
+        #     if (!inherits(x = region.highlight, what = "GRanges")) {
+        #         warning("region.highlight must be a GRanges object")
+        #     } else {
+        #         md <- mcols(x = region.highlight)
+        #         if ("color" %in% colnames(x = md)) {
+        #             color.use <- md$color
+        #         } else {
+        #             color.use <- rep(x = "grey", length(x = region.highlight))
+        #         }
+        #         df <- data.frame(
+        #             "start" = start(x = region.highlight),
+        #             "end" = end(x = region.highlight),
+        #             "color" = color.use
+        #         )
+        #         df$start <- ifelse(
+        #             test = df$start < start.pos,
+        #             yes = start.pos,
+        #             no = df$start
+        #         )
+        #         df$end <- ifelse(
+        #             test = df$end > end.pos,
+        #             yes = end.pos,
+        #             no = df$end
+        #         )
+        #         p <- p +
+        #             geom_rect(
+        #                 data = df,
+        #                 inherit.aes = FALSE,
+        #                 aes_string(
+        #                     xmin = "start",
+        #                     xmax = "end",
+        #                     ymin = 0,
+        #                     ymax = ymax),
+        #                 fill = rep(x = df$color, length(x = unique(x = coverages$group))),
+        #                 color = "transparent",
+        #                 alpha = 0.2
+        #             )
+        #     }
+        # }
+        # return(p)
     }
 }
 
@@ -680,10 +338,10 @@ SingleCoveragePlot2 <- function(
                                         features = features)
     }
     if (!is.null(x = group.by)) {
-        Idents(object = object) <- group.by
+        Seurat::Idents(object = object) <- group.by
     }
     if (!is.null(x = idents)) {
-        ident.cells <- WhichCells(object = object, idents = idents)
+        ident.cells <- SeuratObject::WhichCells(object = object, idents = idents)
         cells <- intersect(x = cells, y = ident.cells)
     }
     region <- FindRegion(
@@ -696,10 +354,10 @@ SingleCoveragePlot2 <- function(
     )
     if (!is.null(x = split.by)) {
         # combine split.by and group.by information
-        grouping.var <- Idents(object = object)
+        grouping.var <- Seurat::Idents(object = object)
         combined.var <- paste0(object[[split.by]][, 1], "_", grouping.var)
         object$grouping_tmp <- combined.var
-        Idents(object = object) <- "grouping_tmp"
+        Seurat::Idents(object = object) <- "grouping_tmp"
         group.by <- "grouping_tmp"
         if (!is.null(x = idents)) {
             # adjust idents parameter with new split.by information
@@ -707,7 +365,7 @@ SingleCoveragePlot2 <- function(
             idents <- unique(x = idents.keep)
         }
     }
-    cells.per.group <- CellsPerGroup(
+    cells.per.group <- Signac::CellsPerGroup(
         object = object,
         group.by = group.by
     )
@@ -725,7 +383,7 @@ SingleCoveragePlot2 <- function(
     sf.list <- list()
     gsf.list <- list()
     for (i in seq_along(along.with = assay)) {
-        reads.per.group <- AverageCounts(
+        reads.per.group <- Signac::AverageCounts(
             object = object,
             assay = assay[[i]],
             group.by = group.by,
@@ -738,7 +396,7 @@ SingleCoveragePlot2 <- function(
             cells = cells,
             verbose = FALSE
         )
-        colnames(cutmat) <- start(x = region):end(x = region)
+        colnames(cutmat) <- IRanges::start(x = region):IRanges::end(x = region)
         group.scale.factors <- suppressWarnings(reads.per.group * cells.per.group)
         scale.factor <- SetIfNull(
             x = scale.factor, y = median(x = group.scale.factors)
