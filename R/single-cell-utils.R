@@ -3,13 +3,360 @@ globalVariables(c("Assay", "AverageCounts", "CellsPerGroup", "DefaultAssay", "Id
                   "hue_pal", "mcols", "mcols<-", "norm.value", "position", "roll_sum", "slice_sample",
                   "subsetByOverlaps", "theme_browser"))
 
-SetIfNull <- getFromNamespace("SetIfNull","Signac")
-FindRegion <- getFromNamespace("FindRegion","Signac")
-GetGroups <- getFromNamespace("GetGroups","Signac")
-CutMatrix <- getFromNamespace("CutMatrix","Signac")
-ApplyMatrixByGroup <- getFromNamespace("ApplyMatrixByGroup","Signac")
+# SetIfNull <- getFromNamespace("SetIfNull","Signac")
+# FindRegion <- getFromNamespace("FindRegion","Signac")
+# GetGroups <- getFromNamespace("GetGroups","Signac")
+# CutMatrix <- getFromNamespace("CutMatrix","Signac")
+# ApplyMatrixByGroup <- getFromNamespace("ApplyMatrixByGroup","Signac")
+
+SetIfNull <- function(x, y) {
+    if (is.null(x = x)) {
+        return(y)
+    } else {
+        return(x)
+    }
+}
+
+FindRegion <- function(
+        object,
+        region,
+        sep = c("-", "-"),
+        assay = NULL,
+        extend.upstream = 0,
+        extend.downstream = 0) {
+    if (!methods::is(object = region, class2 = "GRanges")) {
+        # first try to convert to coordinates, if not lookup gene
+        region <- tryCatch(
+            expr = suppressWarnings(
+                expr = StringToGRanges(regions = region, sep = sep)
+            ),
+            error = function(x) {
+                region <- Signac::LookupGeneCoords(
+                    object = object,
+                    assay = assay,
+                    gene = region
+                )
+                return(region)
+            }
+        )
+        if (is.null(x = region)) {
+            stop("Gene not found")
+        }
+    }
+    region <- suppressWarnings(expr = Signac::Extend(
+        x = region,
+        upstream = extend.upstream,
+        downstream = extend.downstream
+    )
+    )
+    return(region)
+}
+
+GetGroups <- function(
+        object,
+        group.by,
+        idents) {
+    if (is.null(x = group.by)) {
+        obj.groups <- Idents(object = object)
+    } else {
+        obj.md <- object[[group.by]]
+        obj.groups <- obj.md[, 1]
+        names(obj.groups) <- rownames(x = obj.md)
+    }
+    if (!is.null(idents)) {
+        obj.groups <- obj.groups[obj.groups %in% idents]
+    }
+    return(obj.groups)
+}
+
+isRemote <- function(x) {
+    return(grepl(pattern = "^http|^ftp", x = x))
+}
+
+GetIndexFile <- function(fragment, verbose = TRUE) {
+    is.remote <- isRemote(x = fragment)
+    index.filepaths <- c(paste0(fragment, ".tbi"),
+                         paste0(fragment, ".csi"))
+    index.file <- index.filepaths[file.exists(index.filepaths)]
+    if (length(x = index.file) == 0 & !is.remote) {
+        stop("Fragment file is not indexed.")
+    } else if(length(x = index.file) == 0) {
+        if (verbose) {
+            message("Fragment file is on a remote server")
+        }
+        index.file = paste0(fragment, ".tbi")
+    } else if (length(x = index.file) == 2) {
+        if (verbose) {
+            message("TBI and CSI index both present, using TBI index")
+        }
+        index.file <- index.file[1]
+    }
+    return(index.file)
+}
+
+TabixOutputToDataFrame <- function(reads, record.ident = TRUE) {
+    if (record.ident) {
+        nrep <- S4Vectors::elementNROWS(x = reads)
+    }
+    original_names = names(reads)
+    reads <- unlist(x = reads, use.names = FALSE)
+    if (length(x = reads) == 0 | is.null(x = original_names)) {
+        df <- data.frame(
+            "chr" = "",
+            "start" = "",
+            "end" = "",
+            "cell" = "",
+            "count" = ""
+        )
+        df <- df[-1, ]
+        return(df)
+    }
+    reads <- stringr::stri_split_fixed(str = reads, pattern = "\t")
+    n <- length(x = reads[[1]])
+    unlisted <- unlist(x = reads)
+    e1 <- unlisted[n * (seq_along(along.with = reads)) - (n - 1)]
+    e2 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 2)])
+    e3 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 3)])
+    e4 <- unlisted[n * (seq_along(along.with = reads)) - (n - 4)]
+    e5 <- as.numeric(x = unlisted[n * (seq_along(along.with = reads)) - (n - 5)])
+    df <- data.frame(
+        "chr" = e1,
+        "start" = e2,
+        "end" = e3,
+        "cell" = e4,
+        "count" = e5,
+        stringsAsFactors = FALSE,
+        check.rows = FALSE,
+        check.names = FALSE
+    )
+    if (record.ident) {
+        df$ident <- rep(x = seq_along(along.with = nrep), nrep)
+    }
+    return(df)
+}
+
+#' @importFrom Rsamtools scanTabix
+GetReadsInRegion <- function(
+        cellmap,
+        region,
+        tabix.file,
+        cells = NULL,
+        verbose = TRUE,
+        ...) {
+    file.to.object <- names(x = cellmap)
+    names(x = file.to.object) <- cellmap
+
+    if (verbose) {
+        message("Extracting reads in requested region")
+    }
+    if (!methods::is(object = region, class2 = "GRanges")) {
+        region <- StringToGRanges(regions = region, ...)
+    }
+    # remove regions that aren't in the fragment file
+    common.seqlevels <- intersect(
+        x = GenomeInfoDb::seqlevels(x = region),
+        y = seqnamesTabix(file = tabix.file)
+    )
+    if (length(common.seqlevels) != 0) {
+        region <- keepSeqlevels(
+            x = region,
+            value = common.seqlevels,
+            pruning.mode = "coarse"
+        )
+        reads <- scanTabix(file = tabix.file, param = region)
+        reads <- TabixOutputToDataFrame(reads = reads)
+        reads <- reads[
+            fastmatch::fmatch(x = reads$cell, table = cellmap, nomatch = 0L) > 0,
+        ]
+        # convert cell names to match names in object
+        reads$cell <- file.to.object[reads$cell]
+        if (!is.null(x = cells)) {
+            reads <- reads[reads$cell %in% cells, ]
+        }
+        if (nrow(reads) == 0) {
+            reads$ident <- integer()
+            reads$length <- numeric()
+            return(reads)
+        }
+        reads$length <- reads$end - reads$start
+    } else {
+        reads <- data.frame(
+            "chr" = character(),
+            "start" = numeric(),
+            "end" = numeric(),
+            "cell" = character(),
+            "count" = numeric(),
+            "ident" = integer(),
+            "length" = numeric()
+        )
+    }
+    return(reads)
+}
+
+#' @importFrom Matrix sparseMatrix
+SingleFileCutMatrix <- function(
+        cellmap,
+        region,
+        cells = NULL,
+        tabix.file,
+        verbose = TRUE) {
+    # if multiple regions supplied, must be the same width
+    cells <- SetIfNull(x = cells, y = names(x = cellmap))
+    if (length(x = region) == 0) {
+        return(NULL)
+    }
+    fragments <- GetReadsInRegion(
+        region = region,
+        cellmap = cellmap,
+        cells = cells,
+        tabix.file = tabix.file,
+        verbose = verbose
+    )
+    start.lookup <- start(x = region)
+    names(start.lookup) <- seq_along(region)
+    # if there are no reads in the region
+    # create an empty matrix of the correct dimension
+    if (nrow(x = fragments) == 0) {
+        cut.matrix <- sparseMatrix(
+            i = NULL,
+            j = NULL,
+            dims = c(length(x = cells), width(x = region)[[1]])
+        )
+    } else {
+        fragstarts <- start.lookup[fragments$ident] + 1
+        cut.df <- data.frame(
+            position = c(fragments$start, fragments$end) - fragstarts,
+            cell = c(fragments$cell, fragments$cell),
+            stringsAsFactors = FALSE
+        )
+        cut.df <- cut.df[
+            (cut.df$position > 0) & (cut.df$position <= width(x = region)[[1]]),
+        ]
+        cell.vector <- seq_along(along.with = cells)
+        names(x = cell.vector) <- cells
+        cell.matrix.info <- cell.vector[cut.df$cell]
+        cut.matrix <- sparseMatrix(
+            i = cell.matrix.info,
+            j = cut.df$position,
+            x = 1,
+            dims = c(length(x = cells), width(x = region)[[1]])
+        )
+    }
+    rownames(x = cut.matrix) <- cells
+    colnames(x = cut.matrix) <- seq_len(width(x = region)[[1]])
+    return(cut.matrix)
+}
+
+#' @importFrom GenomeInfoDb keepSeqlevels
+#' @importFrom Rsamtools TabixFile seqnamesTabix
+#' @importFrom Signac Fragments GetFragmentData
+CutMatrix <- function(
+        object,
+        region,
+        group.by = NULL,
+        assay = NULL,
+        cells = NULL,
+        verbose = TRUE) {
+    # run SingleFileCutMatrix for each fragment file and combine results
+    assay <- SetIfNull(x = assay, y = DefaultAssay(object = object))
+    cells <- SetIfNull(x = cells, y = colnames(x = object))
+    fragments <- Fragments(object = object[[assay]])
+    if (length(x = fragments) == 0) {
+        stop("No fragment information found for requested assay")
+    }
+    res <- list()
+    for (i in seq_along(along.with = fragments)) {
+        fragment.path <- GetFragmentData(object = fragments[[i]], slot = "path")
+        cellmap <- GetFragmentData(object = fragments[[i]], slot = "cells")
+        tabix.file <- TabixFile(
+            file = fragment.path,
+            index = GetIndexFile(fragment = fragment.path, verbose = FALSE)
+        )
+        open(con = tabix.file)
+        # remove regions that aren't in the fragment file
+        seqnames.in.both <- intersect(
+            x = seqnames(x = region),
+            y = seqnamesTabix(file = tabix.file)
+        )
+        region <- keepSeqlevels(
+            x = region,
+            value = seqnames.in.both,
+            pruning.mode = "coarse"
+        )
+        if (length(x = region) != 0) {
+            cm <- SingleFileCutMatrix(
+                region = region,
+                cellmap = cellmap,
+                tabix.file = tabix.file,
+                cells = cells,
+                verbose = FALSE
+            )
+            res[[i]] <- cm
+        }
+        close(con = tabix.file)
+    }
+    res <- Reduce(f = `+`, x = res)
+    return(res)
+}
 
 
+ApplyMatrixByGroup <- function(
+        mat,
+        groups,
+        fun,
+        normalize = TRUE,
+        group.scale.factors = NULL,
+        scale.factor = NULL) {
+    if (normalize) {
+        if (is.null(x = group.scale.factors) | is.null(x = scale.factor)) {
+            stop("If normalizing counts, supply group scale factors")
+        }
+    }
+    all.groups <- as.character(x = unique(x = groups))
+    if (any(is.na(x = groups))) {
+        all.groups <- c(all.groups, NA)
+    }
+    ngroup <- length(x = all.groups)
+    npos <- ncol(x = mat)
+
+    group <- unlist(
+        x = lapply(X = all.groups, FUN = function(x) rep(x, npos))
+    )
+    position <- rep(x = as.numeric(x = colnames(x = mat)), ngroup)
+    count <- vector(mode = "numeric", length = npos * ngroup)
+
+    for (i in seq_along(along.with = all.groups)) {
+        grp <- all.groups[[i]]
+        if (is.na(x = grp)) {
+            pos.cells <- names(x = groups)[is.na(x = groups)]
+        } else {
+            pos.cells <- names(x = groups)[groups == all.groups[[i]]]
+        }
+        if (length(x = pos.cells) > 1) {
+            totals <- fun(x = mat[pos.cells, ])
+        } else {
+            totals <- mat[pos.cells, ]
+        }
+        count[((i - 1) * npos + 1):((i * npos))] <- totals
+    }
+
+    # construct dataframe
+    coverages <- data.frame(
+        "group" = group, "position" = position, "count" = count,
+        stringsAsFactors = FALSE
+    )
+
+    if (normalize) {
+        scale.factor <- SetIfNull(
+            x = scale.factor, y = median(x = group.scale.factors)
+        )
+        coverages$norm.value <- coverages$count /
+            group.scale.factors[coverages$group] * scale.factor
+    } else {
+        coverages$norm.value <- coverages$count
+    }
+    return(coverages)
+}
 
 # slightly modified from Signac source code
 PeakPlot2 <- function(

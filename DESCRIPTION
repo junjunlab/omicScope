@@ -41,7 +41,11 @@ Imports:
     data.table,
     magrittr,
     Rsamtools,
-    ggbio
+    ggbio,
+    Signac,
+    GenomeInfoDb,
+    fastmatch,
+    stringr
 Enhances: 
     Rtsne,
     umap
@@ -59,6 +63,5 @@ Suggests:
     ggpubr,
     ggh4x,
     ggarrow,
-    ggnewscale,
-    Signac
+    ggnewscale
 VignetteBuilder: knitr
