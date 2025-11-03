@@ -45,7 +45,7 @@ Imports:
     Signac,
     GenomeInfoDb,
     fastmatch,
-    stringr
+    stringi
 Enhances: 
     Rtsne,
     umap

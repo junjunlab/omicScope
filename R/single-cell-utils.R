@@ -111,7 +111,7 @@ TabixOutputToDataFrame <- function(reads, record.ident = TRUE) {
         df <- df[-1, ]
         return(df)
     }
-    reads <- stringr::stri_split_fixed(str = reads, pattern = "\t")
+    reads <- stringi::stri_split_fixed(str = reads, pattern = "\t")
     n <- length(x = reads[[1]])
     unlisted <- unlist(x = reads)
     e1 <- unlisted[n * (seq_along(along.with = reads)) - (n - 1)]
