@@ -18,6 +18,12 @@
 #' @param target_region A character vector specifying genomic regions in the format
 #'   "chr:start-end" (e.g., "chr1:1000000-2000000"). Defaults to NULL. Either `target_gene`
 #'   or `target_region` must be provided.
+#' @param extend_up Numeric. The number of base pairs to extend the visualization
+#'   region upstream from the gene's start. **Effective only when `target_gene` is used.**
+#'   Defaults to 0
+#' @param extend_down Numeric. The number of base pairs to extend the visualization
+#'   region downstream from the gene's end. **Effective only when `target_gene` is used.**
+#'   Defaults to 0
 #' @param sample_order A character vector to specify the display order of samples in the facets.
 #' @param group_order A character vector to specify the display order of groups in the facets.
 #' @param gene_order A character vector to specify the display order of genes in the facets.
@@ -119,6 +125,7 @@ coverage_plot <- function(bam_file = NULL,
                           gtf_file = NULL,
                           target_gene = NULL,
                           target_region = NULL,
+                          extend_up = 0,extend_down = 0,
                           sample_order = NULL, group_order = NULL,
                           gene_order = NULL, region_order = NULL,
                           merge_group = FALSE,
@@ -214,7 +221,8 @@ coverage_plot <- function(bam_file = NULL,
                            target_region = target_region,
                            query_region = query_region,
                            genes = genes,
-                           sample_name = sample_name, group_name = group_name)
+                           sample_name = sample_name, group_name = group_name,
+                           extend_up = extend_up,extend_down = extend_down)
 
         ylb <- "Reads coverage (rpm)"
     }else{
@@ -231,7 +239,8 @@ coverage_plot <- function(bam_file = NULL,
                            target_region = target_region,
                            query_region = query_region,
                            genes = genes,
-                           sample_name = sample_name, group_name = group_name)
+                           sample_name = sample_name, group_name = group_name,
+                           extend_up = extend_up,extend_down = extend_down)
 
         ylb <- "Normalized reads coverage"
     }
@@ -282,6 +291,13 @@ coverage_plot <- function(bam_file = NULL,
         tid <- gtf |>
             dplyr::filter(gene_name %in% target_gene) |>
             dplyr::filter(type == "transcript")
+
+        # extend region
+        gid <- gtf |>
+            dplyr::filter(gene_name %in% target_gene) |>
+            dplyr::filter(type == "gene") |>
+            dplyr::group_by(gene_name) |>
+            dplyr::reframe(x_pos = c(min(start) - extend_up, max(end) + extend_down))
 
         strc.info <- strc |>
             dplyr::mutate(exon_length = end - start) |>
@@ -385,8 +401,8 @@ coverage_plot <- function(bam_file = NULL,
     if(!is.null(group_order)){
         cov.strc$group <- factor(cov.strc$group, levels = c(group_order,"Gene structure"))
         rg$group <- factor(rg$group, levels = group_order)
-        tid$group <- factor(tid$group, levels = c(sample_order,"Gene structure"))
-        strc$group <- factor(strc$group, levels = c(sample_order,"Gene structure"))
+        tid$group <- factor(tid$group, levels = c(group_order,"Gene structure"))
+        strc$group <- factor(strc$group, levels = c(group_order,"Gene structure"))
     }
 
     if(!is.null(gene_order)){
@@ -521,6 +537,13 @@ coverage_plot <- function(bam_file = NULL,
         }
 
     }
+
+    # extend region
+    if(!is.null(target_gene)){
+        p <- p +
+            geom_blank(data = gid,aes(x = x_pos, y = 0))
+    }
+
 
     p <- p +
         facet_layer +

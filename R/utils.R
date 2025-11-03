@@ -463,7 +463,8 @@ get_trans_pos <- function(strc = NULL){
 get_cov <- function(bam_file = NULL, bw_file = NULL,
                     query_region = NULL, target_region = NULL,
                     genes = NULL,
-                    sample_name = NULL, group_name = NULL){
+                    sample_name = NULL, group_name = NULL,
+                    extend_up = 0, extend_down = 0){
     if(!is.null(bam_file)){
         lapply(seq_along(bam_file),function(x){
             lapply(seq_along(genes),function(g){
@@ -484,8 +485,8 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
                 # gene region
                 rg <- GenomicRanges::GRanges(
                     seqnames = GenomicRanges::seqnames(fts)[1],
-                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
-                                              end = max(GenomicRanges::end(fts))),
+                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)) - extend_up,
+                                              end = max(GenomicRanges::end(fts))) + extend_down,
                     strand = GenomicRanges::strand(fts)[1])
 
                 pileup_result <- Rsamtools::pileup(

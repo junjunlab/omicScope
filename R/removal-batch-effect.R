@@ -48,8 +48,6 @@
 #' )
 #' }
 #'
-#' @seealso
-#' \code{\link[sva]{ComBat_seq}} for details on the underlying batch correction algorithm
 #'
 #'
 #' @export

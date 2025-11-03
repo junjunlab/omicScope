@@ -12,6 +12,8 @@ coverage_plot(
   gtf_file = NULL,
   target_gene = NULL,
   target_region = NULL,
+  extend_up = 0,
+  extend_down = 0,
   sample_order = NULL,
   group_order = NULL,
   gene_order = NULL,
@@ -56,6 +58,14 @@ attribute in the GTF) to visualize.}
 \item{target_region}{A character vector specifying genomic regions in the format
 "chr:start-end" (e.g., "chr1:1000000-2000000"). Defaults to NULL. Either \code{target_gene}
 or \code{target_region} must be provided.}
+
+\item{extend_up}{Numeric. The number of base pairs to extend the visualization
+region upstream from the gene's start. \strong{Effective only when \code{target_gene} is used.}
+Defaults to 0}
+
+\item{extend_down}{Numeric. The number of base pairs to extend the visualization
+region downstream from the gene's end. \strong{Effective only when \code{target_gene} is used.}
+Defaults to 0}
 
 \item{sample_order}{A character vector to specify the display order of samples in the facets.}
 

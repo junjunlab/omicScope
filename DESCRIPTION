@@ -1,6 +1,6 @@
 Package: omicScope
 Title: A Comprehensive and Integrated Framework for Transcriptomic Data Analysis
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: 
     person("Jun", "Zhang", , "3219030654@stu.cpu.edu.cn", role = c("aut", "cre"))
 Description: Provides a streamlined and user-friendly workflow for the end-to-end
@@ -40,7 +40,8 @@ Imports:
     scales,
     data.table,
     magrittr,
-    Rsamtools
+    Rsamtools,
+    ggbio
 Enhances: 
     Rtsne,
     umap
@@ -58,5 +59,6 @@ Suggests:
     ggpubr,
     ggh4x,
     ggarrow,
-    ggnewscale
+    ggnewscale,
+    Signac
 VignetteBuilder: knitr
