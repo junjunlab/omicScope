@@ -20,14 +20,15 @@ coverage_plot(
   region_order = NULL,
   merge_group = FALSE,
   add_range_label = FALSE,
+  range_pos = c(0.9, 0.9),
   range_digit = 1,
+  range_label_size = 2.5,
   remove_labelY = FALSE,
   collapse_exon = FALSE,
   show_utr = TRUE,
   arrow_length = 1.2,
   arrow_linewidth = 0.3,
   arrow_col = "black",
-  range_pos = c(0.9, 0.9),
   exon_col = "black",
   exon_linewidth = 3,
   add_backsqure = TRUE,
@@ -82,8 +83,14 @@ averaged and displayed as a single group track. Defaults to \code{FALSE}.}
 \item{add_range_label}{Logical. If \code{TRUE}, adds a text label indicating the Y-axis
 range to each coverage panel. Defaults to \code{FALSE}.}
 
+\item{range_pos}{A numeric vector of length 2 \code{c(x, y)} specifying the relative position
+(from 0 to 1) of the range label within the panel. Defaults to \code{c(0.9, 0.9)}.}
+
 \item{range_digit}{Numeric. The number of decimal places to use for the range label.
 Defaults to 1.}
+
+\item{range_label_size}{Numeric. The font size of the range label text when
+\code{add_range_label} is \code{TRUE}. Defaults to 2.5.}
 
 \item{remove_labelY}{Logical. If \code{TRUE}, removes Y-axis tick labels and marks.
 Defaults to \code{FALSE}.}
@@ -103,9 +110,6 @@ arrows. Defaults to 0.3.}
 
 \item{arrow_col}{Character string. The color of the transcript direction arrows.
 Defaults to "black".}
-
-\item{range_pos}{A numeric vector of length 2 \code{c(x, y)} specifying the relative position
-(from 0 to 1) of the range label within the panel. Defaults to \code{c(0.9, 0.9)}.}
 
 \item{exon_col}{Character string. The color of the exon segments in the gene model.
 Defaults to "black".}

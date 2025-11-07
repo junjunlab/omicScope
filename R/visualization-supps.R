@@ -33,8 +33,12 @@
 #'   averaged and displayed as a single group track. Defaults to `FALSE`.
 #' @param add_range_label Logical. If `TRUE`, adds a text label indicating the Y-axis
 #'   range to each coverage panel. Defaults to `FALSE`.
+#' @param range_pos A numeric vector of length 2 `c(x, y)` specifying the relative position
+#'   (from 0 to 1) of the range label within the panel. Defaults to `c(0.9, 0.9)`.
 #' @param range_digit Numeric. The number of decimal places to use for the range label.
 #'   Defaults to 1.
+#' @param range_label_size Numeric. The font size of the range label text when
+#'   `add_range_label` is `TRUE`. Defaults to 2.5.
 #' @param remove_labelY Logical. If `TRUE`, removes Y-axis tick labels and marks.
 #'   Defaults to `FALSE`.
 #' @param collapse_exon Logical. If `TRUE`, all transcripts of a gene are collapsed
@@ -48,8 +52,6 @@
 #'   arrows. Defaults to 0.3.
 #' @param arrow_col Character string. The color of the transcript direction arrows.
 #'   Defaults to "black".
-#' @param range_pos A numeric vector of length 2 `c(x, y)` specifying the relative position
-#'   (from 0 to 1) of the range label within the panel. Defaults to `c(0.9, 0.9)`.
 #' @param exon_col Character string. The color of the exon segments in the gene model.
 #'   Defaults to "black".
 #' @param exon_linewidth Numeric. The line width of the exon segments. Defaults to 3.
@@ -129,11 +131,12 @@ coverage_plot <- function(bam_file = NULL,
                           sample_order = NULL, group_order = NULL,
                           gene_order = NULL, region_order = NULL,
                           merge_group = FALSE,
-                          add_range_label = FALSE, range_digit = 1,
-                          remove_labelY = FALSE,
+                          add_range_label = FALSE,
+                          range_pos = c(0.9, 0.9),
+                          range_digit = 1,
+                          range_label_size = 2.5, remove_labelY = FALSE,
                           collapse_exon = FALSE, show_utr = TRUE,
                           arrow_length = 1.2, arrow_linewidth = 0.3, arrow_col = "black",
-                          range_pos = c(0.9, 0.9),
                           exon_col = "black", exon_linewidth = 3,
                           add_backsqure = TRUE,
                           add_gene_label = TRUE, gene_label_size = 1,
@@ -566,7 +569,7 @@ coverage_plot <- function(bam_file = NULL,
             # range layer
             geom_text(data = rg,
                       aes(x = I(range_pos[1]),y = I(range_pos[2]),label = label),
-                      show.legend = FALSE)
+                      show.legend = FALSE,size = range_label_size)
     }
 
     # remove y label
