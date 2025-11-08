@@ -200,6 +200,14 @@ scCoverage_plot <- function(object = NULL,
             data.frame(check.names = FALSE)
     }
 
+    # check gene names
+    if(!is.null(target_gene)){
+        gin <- target_gene %in% unique(gtf$gene_name)
+
+        if("FALSE" %in% gin){
+            message(paste0("Gene name: ",target_gene[!gin]," can't be found in gtf file, please check its symbol. This gene will not be used for plot."))
+        }
+    }
 
     # filter exons
     exon <- subset(gtf, type == "exon")
@@ -449,6 +457,8 @@ scCoverage_plot <- function(object = NULL,
 
         if(collapse_exon == TRUE){
             strc.info$y_max <- 2
+        }else{
+            strc.info$y_max <- max(strc.info$transcript_rank + 1)
         }
 
         strc <- strc |>
@@ -667,9 +677,13 @@ scCoverage_plot <- function(object = NULL,
 
 
     # add gene label
-    if(!is.null(target_region) & add_gene_label == TRUE){
+    if(add_gene_label == TRUE){
         if(collapse_exon == TRUE){
             tid$transcript_rank <- 1
+
+            tid <- tid |>
+                dplyr::group_by(gene_name) |>
+                dplyr::slice_max(order_by = width)
         }
 
         if(add_backsqure == TRUE){

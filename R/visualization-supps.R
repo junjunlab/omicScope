@@ -158,6 +158,14 @@ coverage_plot <- function(bam_file = NULL,
             data.frame(check.names = FALSE)
     }
 
+    # check gene names
+    if(!is.null(target_gene)){
+        gin <- target_gene %in% unique(gtf$gene_name)
+
+        if("FALSE" %in% gin){
+            message(paste0("Gene name: ",target_gene[!gin]," can't be found in gtf file, please check its symbol. This gene will not be used for plot."))
+        }
+    }
 
     # filter exons
     exon <- subset(gtf, type == "exon")
@@ -281,6 +289,19 @@ coverage_plot <- function(bam_file = NULL,
 
         if(show_utr == TRUE){
             strc <- subset(gtf, type %in% c("CDS","five_prime_utr", "three_prime_utr","5UTR","3UTR"))
+
+            # get non-coding strc info
+            gin2 <- target_gene %in% unique(strc$gene_name)
+            if(all(gin)){
+                if(!all(gin2)){
+                    strc.nc <- exon |>
+                        dplyr::filter(gene_name %in% target_gene[!gin2]) |>
+                        dplyr::mutate(type = "CDS")
+
+                    # merge
+                    strc <- rbind(strc,strc.nc)
+                }
+            }
         }else{
             strc <- exon
         }
@@ -365,6 +386,8 @@ coverage_plot <- function(bam_file = NULL,
 
         if(collapse_exon == TRUE){
             strc.info$y_max <- 2
+        }else{
+            strc.info$y_max <- max(strc.info$transcript_rank + 1)
         }
 
         strc <- strc |>
@@ -522,9 +545,13 @@ coverage_plot <- function(bam_file = NULL,
 
 
     # add gene label
-    if(!is.null(target_region) & add_gene_label == TRUE){
+    if(add_gene_label == TRUE){
         if(collapse_exon == TRUE){
             tid$transcript_rank <- 1
+
+            tid <- tid |>
+                dplyr::group_by(gene_name) |>
+                dplyr::slice_max(order_by = width)
         }
 
         if(add_backsqure == TRUE){
