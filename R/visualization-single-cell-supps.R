@@ -449,6 +449,7 @@ scCoverage_plot <- function(object = NULL,
 
             strc.info <- get_trans_pos(strc)
             strc.info$target_region <- target_region[x]
+            strc.info$y_max <- max(strc.info$transcript_rank + 1)
 
             return(list(strc, tid, strc.info))
         }) -> tmp.lst
@@ -460,8 +461,6 @@ scCoverage_plot <- function(object = NULL,
 
         if(collapse_exon == TRUE){
             strc.info$y_max <- 2
-        }else{
-            strc.info$y_max <- max(strc.info$transcript_rank + 1)
         }
 
         strc <- strc |>
