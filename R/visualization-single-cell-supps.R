@@ -79,8 +79,11 @@
 #' @param exon_col,exon_linewidth Aesthetics for the exons in the gene models.
 #' @param add_backsqure Logical. If `TRUE`, use `geom_label` for gene names (with a
 #'   background box); if `FALSE`, use `geom_text`. Default is `TRUE`.
-#' @param add_gene_label,gene_label_size Logical and numeric parameters to control
-#'   the display of gene name labels on the gene models.
+#' @param add_gene_label Logical. If `TRUE`, adds gene name labels to the gene structure
+#'   track when using `target_region`. Defaults to `TRUE`.
+#' @param gene_label_size Numeric. The size of the gene name labels. Defaults to 1.
+#' @param gene_label_aes Character. Column name to use from GTF for gene labeling (like "gene_name", "gene_id").
+#' Defaults to "gene_name".
 #' @param highlight_region An optional `data.frame` with `seqnames`, `start`, `end`
 #'   columns to add a shaded background highlighting specific genomic regions.
 #' @param highlight_col_aes Character. The column name in `highlight_region` to map to the
@@ -181,7 +184,7 @@ scCoverage_plot <- function(object = NULL,
                             range_pos = c(0.9, 0.9),
                             exon_col = "black", exon_linewidth = 3,
                             add_backsqure = TRUE,
-                            add_gene_label = TRUE, gene_label_size = 1,
+                            add_gene_label = TRUE, gene_label_size = 1, gene_label_aes = "gene_name",
                             highlight_region = NULL,
                             highlight_col_aes = "seqnames", highlight_col = NULL, highlight_alpha = 0.2){
     # ==========================================================================
@@ -690,12 +693,12 @@ scCoverage_plot <- function(object = NULL,
             p <- p +
                 geom_label(data = tid,
                            aes(x = (start + end)/2,y = transcript_rank,
-                               label = gene_name),size = gene_label_size)
+                               label = .data[[gene_label_aes]]),size = gene_label_size)
         }else{
             p <- p +
                 geom_text(data = tid,
                           aes(x = (start + end)/2,y = transcript_rank,
-                              label = gene_name),size = gene_label_size)
+                              label = .data[[gene_label_aes]]),size = gene_label_size)
         }
 
     }

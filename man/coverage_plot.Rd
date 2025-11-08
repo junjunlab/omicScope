@@ -34,6 +34,7 @@ coverage_plot(
   add_backsqure = TRUE,
   add_gene_label = TRUE,
   gene_label_size = 1,
+  gene_label_aes = "gene_name",
   highlight_region = NULL,
   highlight_col_aes = "seqnames",
   highlight_col = NULL,
@@ -123,6 +124,9 @@ Defaults to "black".}
 track when using \code{target_region}. Defaults to \code{TRUE}.}
 
 \item{gene_label_size}{Numeric. The size of the gene name labels. Defaults to 1.}
+
+\item{gene_label_aes}{Character. Column name to use from GTF for gene labeling (like "gene_name", "gene_id").
+Defaults to "gene_name".}
 
 \item{highlight_region}{A data frame containing regions to be highlighted
 on the plot. The object must include \code{start} and \code{end} columns. This allows for overlaying

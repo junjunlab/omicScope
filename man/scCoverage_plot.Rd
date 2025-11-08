@@ -39,6 +39,7 @@ scCoverage_plot(
   add_backsqure = TRUE,
   add_gene_label = TRUE,
   gene_label_size = 1,
+  gene_label_aes = "gene_name",
   highlight_region = NULL,
   highlight_col_aes = "seqnames",
   highlight_col = NULL,
@@ -132,8 +133,13 @@ the range label in normalized plot coordinates (from 0 to 1). Default is \code{c
 \item{add_backsqure}{Logical. If \code{TRUE}, use \code{geom_label} for gene names (with a
 background box); if \code{FALSE}, use \code{geom_text}. Default is \code{TRUE}.}
 
-\item{add_gene_label, gene_label_size}{Logical and numeric parameters to control
-the display of gene name labels on the gene models.}
+\item{add_gene_label}{Logical. If \code{TRUE}, adds gene name labels to the gene structure
+track when using \code{target_region}. Defaults to \code{TRUE}.}
+
+\item{gene_label_size}{Numeric. The size of the gene name labels. Defaults to 1.}
+
+\item{gene_label_aes}{Character. Column name to use from GTF for gene labeling (like "gene_name", "gene_id").
+Defaults to "gene_name".}
 
 \item{highlight_region}{An optional \code{data.frame} with \code{seqnames}, \code{start}, \code{end}
 columns to add a shaded background highlighting specific genomic regions.}

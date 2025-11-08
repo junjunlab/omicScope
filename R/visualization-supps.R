@@ -60,6 +60,8 @@
 #' @param add_gene_label Logical. If `TRUE`, adds gene name labels to the gene structure
 #'   track when using `target_region`. Defaults to `TRUE`.
 #' @param gene_label_size Numeric. The size of the gene name labels. Defaults to 1.
+#' @param gene_label_aes Character. Column name to use from GTF for gene labeling (like "gene_name", "gene_id").
+#' Defaults to "gene_name".
 #' @param highlight_region A data frame containing regions to be highlighted
 #'   on the plot. The object must include `start` and `end` columns. This allows for overlaying
 #'   colored bands to mark specific features (e.g., peaks, motifs, domains). Defaults to `NULL`.
@@ -139,7 +141,7 @@ coverage_plot <- function(bam_file = NULL,
                           arrow_length = 1.2, arrow_linewidth = 0.3, arrow_col = "black",
                           exon_col = "black", exon_linewidth = 3,
                           add_backsqure = TRUE,
-                          add_gene_label = TRUE, gene_label_size = 1,
+                          add_gene_label = TRUE, gene_label_size = 1, gene_label_aes = "gene_name",
                           highlight_region = NULL,
                           highlight_col_aes = "seqnames", highlight_col = NULL, highlight_alpha = 0.2){
     # ==========================================================================
@@ -558,12 +560,12 @@ coverage_plot <- function(bam_file = NULL,
             p <- p +
                 geom_label(data = tid,
                            aes(x = (start + end)/2,y = transcript_rank,
-                               label = gene_name),size = gene_label_size)
+                               label = .data[[gene_label_aes]]),size = gene_label_size)
         }else{
             p <- p +
                 geom_text(data = tid,
                           aes(x = (start + end)/2,y = transcript_rank,
-                              label = gene_name),size = gene_label_size)
+                              label = .data[[gene_label_aes]]),size = gene_label_size)
         }
 
     }
@@ -608,7 +610,6 @@ coverage_plot <- function(bam_file = NULL,
 
     return(p)
 }
-
 
 
 
