@@ -7,6 +7,8 @@
 coverage_plot(
   bam_file = NULL,
   bw_file = NULL,
+  peaks_data = NULL,
+  peaks_width = 3,
   sample_name = NULL,
   group_name = NULL,
   gtf_file = NULL,
@@ -14,12 +16,15 @@ coverage_plot(
   target_region = NULL,
   extend_up = 0,
   extend_down = 0,
+  sample_col = scale_fill_discrete(),
+  peaks_sample_col = scale_color_discrete(),
   sample_order = NULL,
   group_order = NULL,
   gene_order = NULL,
   region_order = NULL,
   merge_group = FALSE,
   add_range_label = FALSE,
+  set_range_val = NULL,
   range_pos = c(0.9, 0.9),
   range_digit = 1,
   range_label_size = 2.5,
@@ -46,6 +51,13 @@ coverage_plot(
 
 \item{bw_file}{A character vector of paths to one or more bigwig files.}
 
+\item{peaks_data}{A data frame for plotting additional tracks, such as ChIP-seq peaks.
+Must contain columns like 'seqnames', 'start', 'end', 'sample_name', and
+'gene_name' or 'target_region'. Defaults to \code{NULL}.}
+
+\item{peaks_width}{Numeric. The line width for the segments plotted from \code{peaks_data}.
+Defaults to 3.}
+
 \item{sample_name}{A character vector providing sample names for each BAM/bigwig file.
 If NULL, the BAM/bigwig filenames are used.}
 
@@ -63,11 +75,17 @@ or \code{target_region} must be provided.}
 
 \item{extend_up}{Numeric. The number of base pairs to extend the visualization
 region upstream from the gene's start. \strong{Effective only when \code{target_gene} is used.}
-Defaults to 0}
+Defaults to 0.}
 
 \item{extend_down}{Numeric. The number of base pairs to extend the visualization
 region downstream from the gene's end. \strong{Effective only when \code{target_gene} is used.}
-Defaults to 0}
+Defaults to 0.}
+
+\item{sample_col}{A ggplot2 scale object (e.g., from \code{scale_fill_manual()}) to control
+the fill color of the coverage bars. Defaults to \code{scale_fill_discrete()}.}
+
+\item{peaks_sample_col}{A ggplot2 scale object (e.g., from \code{scale_color_manual()}) to control
+the color of the peak segments from \code{peaks_data}. Defaults to \code{scale_color_discrete()}.}
 
 \item{sample_order}{A character vector to specify the display order of samples in the facets.}
 
@@ -83,6 +101,10 @@ averaged and displayed as a single group track. Defaults to \code{FALSE}.}
 
 \item{add_range_label}{Logical. If \code{TRUE}, adds a text label indicating the Y-axis
 range to each coverage panel. Defaults to \code{FALSE}.}
+
+\item{set_range_val}{A data frame to manually set the Y-axis range for specific panels.
+It must contain \code{y_min}, \code{y_max}, and the corresponding \code{gene_name} or \code{target_region}.
+Can optionally include a \code{sample} column for sample-specific ranges. Defaults to \code{NULL}.}
 
 \item{range_pos}{A numeric vector of length 2 \code{c(x, y)} specifying the relative position
 (from 0 to 1) of the range label within the panel. Defaults to \code{c(0.9, 0.9)}.}

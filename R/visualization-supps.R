@@ -8,6 +8,11 @@
 #'
 #' @param bam_file A character vector of paths to one or more BAM files.
 #' @param bw_file A character vector of paths to one or more bigwig files.
+#' @param peaks_data A data frame for plotting additional tracks, such as ChIP-seq peaks.
+#'   Must contain columns like 'seqnames', 'start', 'end', 'sample_name', and
+#'   'gene_name' or 'target_region'. Defaults to `NULL`.
+#' @param peaks_width Numeric. The line width for the segments plotted from `peaks_data`.
+#'   Defaults to 3.
 #' @param sample_name A character vector providing sample names for each BAM/bigwig file.
 #'   If NULL, the BAM/bigwig filenames are used.
 #' @param group_name A character vector assigning a group to each sample.
@@ -20,10 +25,14 @@
 #'   or `target_region` must be provided.
 #' @param extend_up Numeric. The number of base pairs to extend the visualization
 #'   region upstream from the gene's start. **Effective only when `target_gene` is used.**
-#'   Defaults to 0
+#'   Defaults to 0.
 #' @param extend_down Numeric. The number of base pairs to extend the visualization
 #'   region downstream from the gene's end. **Effective only when `target_gene` is used.**
-#'   Defaults to 0
+#'   Defaults to 0.
+#' @param sample_col A ggplot2 scale object (e.g., from `scale_fill_manual()`) to control
+#'   the fill color of the coverage bars. Defaults to `scale_fill_discrete()`.
+#' @param peaks_sample_col A ggplot2 scale object (e.g., from `scale_color_manual()`) to control
+#'   the color of the peak segments from `peaks_data`. Defaults to `scale_color_discrete()`.
 #' @param sample_order A character vector to specify the display order of samples in the facets.
 #' @param group_order A character vector to specify the display order of groups in the facets.
 #' @param gene_order A character vector to specify the display order of genes in the facets.
@@ -33,6 +42,9 @@
 #'   averaged and displayed as a single group track. Defaults to `FALSE`.
 #' @param add_range_label Logical. If `TRUE`, adds a text label indicating the Y-axis
 #'   range to each coverage panel. Defaults to `FALSE`.
+#' @param set_range_val A data frame to manually set the Y-axis range for specific panels.
+#'   It must contain `y_min`, `y_max`, and the corresponding `gene_name` or `target_region`.
+#'   Can optionally include a `sample` column for sample-specific ranges. Defaults to `NULL`.
 #' @param range_pos A numeric vector of length 2 `c(x, y)` specifying the relative position
 #'   (from 0 to 1) of the range label within the panel. Defaults to `c(0.9, 0.9)`.
 #' @param range_digit Numeric. The number of decimal places to use for the range label.
@@ -124,16 +136,21 @@
 #' }
 coverage_plot <- function(bam_file = NULL,
                           bw_file = NULL,
+                          peaks_data = NULL,
+                          peaks_width = 3,
                           sample_name = NULL,
                           group_name = NULL,
                           gtf_file = NULL,
                           target_gene = NULL,
                           target_region = NULL,
                           extend_up = 0,extend_down = 0,
+                          sample_col = scale_fill_discrete(),
+                          peaks_sample_col = scale_color_discrete(),
                           sample_order = NULL, group_order = NULL,
                           gene_order = NULL, region_order = NULL,
                           merge_group = FALSE,
                           add_range_label = FALSE,
+                          set_range_val = NULL,
                           range_pos = c(0.9, 0.9),
                           range_digit = 1,
                           range_label_size = 2.5, remove_labelY = FALSE,
@@ -280,10 +297,72 @@ coverage_plot <- function(bam_file = NULL,
         facet_layer <- ggh4x::facet_grid2(sample ~ .data[[var]], scales = "free", independent = "y", switch = "y")
     }
 
-    # add max value
+    # add max and min value
     cov.res <- cov.res |>
         dplyr::group_by(.data[[var]]) |>
-        dplyr::mutate(y_max = max(rpm, na.rm = TRUE))
+        dplyr::mutate(y_max = max(rpm, na.rm = TRUE),
+                      y_min = min(rpm, na.rm = TRUE)) |>
+        dplyr::mutate(y_min = ifelse(y_min > 0, 0, y_min),
+                      y_max = ifelse(y_max > 0, y_max, 0))
+
+    # custom signal range defination
+    if(!is.null(set_range_val)){
+
+        # Check if both 'y_min' and 'y_max' are present
+        if(!is.null(target_gene)){
+            coln <- c("y_min", "y_max", "gene_name")
+            ck <- "gene_name"
+            gs <- unique(cov.res$gene_name)
+        }else{
+            coln <- c("y_min", "y_max", "target_region")
+            ck <- "target_region"
+            gs <- unique(cov.res$target_region)
+        }
+
+        if (!all(coln %in% colnames(set_range_val))) {
+            stop(paste0("The data frame must contain both 'y_min', 'y_max' and '",ck, "' columns."))
+        }
+
+        # modify range
+        lapply(seq_along(gs),function(x){
+            if(!is.null(target_gene)){
+                tmp1 <- subset(cov.res, gene_name == gs[x])
+                tmp2 <- subset(set_range_val, gene_name == gs[x])
+            }else{
+                tmp1 <- subset(cov.res, target_region == gs[x])
+                tmp2 <- subset(set_range_val, target_region == gs[x])
+            }
+
+            if(nrow(tmp2) > 0){
+                # check sample
+                if("sample" %in% colnames(tmp2)){
+                    smp <- unique(tmp1$sample)
+                    # s = 1
+                    lapply(seq_along(smp),function(s){
+                        tmp1.1 <- subset(tmp1, sample == smp[s])
+                        tmp2.2 <- subset(tmp2, sample == smp[s])
+
+                        if(nrow(tmp2.2) > 0){
+                            tmp1.1$y_min <- tmp2.2$y_min
+                            tmp1.1$y_max <- tmp2.2$y_max
+                        }
+                        return(tmp1.1)
+                    }) %>% do.call("rbind",.) %>%
+                        data.frame(check.names = FALSE) -> tmmp
+
+                    return(tmmp)
+                }else{
+                    tmp1$y_min <- tmp2$y_min
+                    tmp1$y_max <- tmp2$y_max
+                    return(tmp1)
+                }
+            }else{
+                return(tmp1)
+            }
+
+        }) %>% do.call("rbind",.) %>%
+            data.frame(check.names = FALSE) -> cov.res
+    }
 
     # ==========================================================================
     # prepare plot data
@@ -293,17 +372,20 @@ coverage_plot <- function(bam_file = NULL,
             strc <- subset(gtf, type %in% c("CDS","five_prime_utr", "three_prime_utr","5UTR","3UTR"))
 
             # get non-coding strc info
-            gin2 <- target_gene %in% unique(strc$gene_name)
-            if(all(gin)){
-                if(!all(gin2)){
-                    strc.nc <- exon |>
-                        dplyr::filter(gene_name %in% target_gene[!gin2]) |>
-                        dplyr::mutate(type = "CDS")
+            eid <- exon$transcript_id |> unique()
+            fid <- strc$transcript_id |> unique()
 
-                    # merge
-                    strc <- rbind(strc,strc.nc)
-                }
+            # check if include all transcript
+            if(!all(eid %in% fid)){
+                nid <- eid[!(eid %in% fid)]
+                strc.nc <- exon |>
+                    dplyr::filter(transcript_id %in% nid) |>
+                    dplyr::mutate(type = "lnc")
+
+                # merge
+                strc <- rbind(strc,strc.nc)
             }
+
         }else{
             strc <- exon
         }
@@ -360,6 +442,21 @@ coverage_plot <- function(bam_file = NULL,
 
             if(show_utr == TRUE){
                 strc <- subset(gtf, type %in% c("CDS","five_prime_utr", "three_prime_utr","5UTR","3UTR"))
+
+                # get non-coding strc info
+                eid <- exon$transcript_id |> unique()
+                fid <- strc$transcript_id |> unique()
+
+                # check if include all transcript
+                if(!all(eid %in% fid)){
+                    nid <- eid[!(eid %in% fid)]
+                    strc.nc <- exon |>
+                        dplyr::filter(transcript_id %in% nid) |>
+                        dplyr::mutate(type = "lnc")
+
+                    # merge
+                    strc <- rbind(strc,strc.nc)
+                }
             }else{
                 strc <- exon
             }
@@ -408,22 +505,47 @@ coverage_plot <- function(bam_file = NULL,
 
     # rpm range text label
     rg <- cov.res |>
-        dplyr::select(sample, group, .data[[var]], y_max) |>
+        dplyr::select(sample, group, .data[[var]], y_min, y_max) |>
         dplyr::distinct() |>
-        dplyr::mutate(label = paste0("[0-",round(y_max,digits = range_digit),"]"))
+        dplyr::mutate(label = paste0("[",round(y_min,digits = range_digit),"-",round(y_max,digits = range_digit),"]"))
 
-    # ==========================================================================
-    # orders
-    if(!is.null(sample_order)){
-        lvs <- c(sample_order,"Gene structure")
-    }else{
-        lvs <- c(sample_name,"Gene structure")
+    # ============================================================================
+    # check peaks data
+    if(!is.null(peaks_data)){
+        if(!is.null(target_gene)){
+            coln <- c("seqnames","start","end","sample","sample_name","gene_name")
+        }else{
+            coln <- c("seqnames","start","end","sample","sample_name","target_region")
+        }
+
+        # check column names
+        if (!all(coln %in% colnames(peaks_data))) {
+            stop(paste0("The data frame must contain: '",paste(coln,sep = ",",collapse = ", "), "' columns."))
+        }
+
+        peak.res <- peaks_data |>
+            dplyr::group_by(sample_name) |>
+            dplyr::mutate(y = dplyr::cur_group_id())
+        peak.res$y_max <- max(peak.res$y) + 1
     }
 
-    cov.strc$sample <- factor(cov.strc$sample, levels = lvs)
-    rg$sample <- factor(rg$sample, levels = lvs[1:(length(lvs)-1)])
-    tid$sample <- factor(tid$sample, levels = lvs)
-    strc$sample <- factor(strc$sample, levels = lvs)
+    # ============================================================================
+    # orders
+    if(!is.null(sample_order)){
+        lvs <- sample_order
+    }else{
+        lvs <- sample_name
+    }
+
+    if(!is.null(peaks_data)){
+        lvs <-  c(lvs,unique(peak.res$sample))
+        peak.res$sample <- factor(peak.res$sample, levels = c(lvs,"Gene structure"))
+    }
+
+    cov.strc$sample <- factor(cov.strc$sample, levels = c(lvs,"Gene structure"))
+    rg$sample <- factor(rg$sample, levels = c(lvs,"Gene structure"))
+    tid$sample <- factor(tid$sample, levels = c(lvs,"Gene structure"))
+    strc$sample <- factor(strc$sample, levels = c(lvs,"Gene structure"))
 
     if(!is.null(group_order)){
         cov.strc$group <- factor(cov.strc$group, levels = c(group_order,"Gene structure"))
@@ -455,6 +577,21 @@ coverage_plot <- function(bam_file = NULL,
         geom_rect(aes(xmin = pos - 0.5,xmax = pos + 0.5, ymin = 0,ymax = rpm,
                       fill = .data[[var]],color = .data[[var]]),
                   show.legend = FALSE)
+
+    p <- p + sample_col
+
+    # check peaks data
+    if(!is.null(peaks_data)){
+        p <- p +
+            ggnewscale::new_scale_color() +
+            geom_segment(data = peak.res,
+                         aes(x = start,xend = end,y = y,yend = y,color = sample_name),
+                         linewidth = peaks_width) +
+            geom_blank(data = peak.res,aes(y = y_max))
+    }
+
+
+    p <- p + peaks_sample_col
 
     # check highlight region
     if(!is.null(highlight_region)){
@@ -578,7 +715,7 @@ coverage_plot <- function(bam_file = NULL,
 
     p <- p +
         facet_layer +
-        geom_blank(aes(y = y_max)) +
+        geom_blank(aes(ymin = y_min,ymax = y_max)) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.05)),
                            position = "right") +
         scale_x_continuous(labels = function(x) x/1000) +
@@ -609,6 +746,7 @@ coverage_plot <- function(bam_file = NULL,
 
     return(p)
 }
+
 
 
 
