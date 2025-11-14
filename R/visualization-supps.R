@@ -17,7 +17,7 @@
 #'   If NULL, the BAM/bigwig filenames are used.
 #' @param group_name A character vector assigning a group to each sample.
 #'   If NULL, the BAM filenames are used.
-#' @param gtf_file Path to a GTF file or a `GRanges` object containing gene annotations.
+#' @param gtf_file Path to a ensembl GTF file or a `GRanges` object containing gene annotations.
 #' @param target_gene A character vector of one or more target gene names (e.g., from the `gene_name`
 #' attribute in the GTF) to visualize.
 #' @param target_region A character vector specifying genomic regions in the format
