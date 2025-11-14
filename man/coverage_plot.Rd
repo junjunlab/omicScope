@@ -64,7 +64,7 @@ If NULL, the BAM/bigwig filenames are used.}
 \item{group_name}{A character vector assigning a group to each sample.
 If NULL, the BAM filenames are used.}
 
-\item{gtf_file}{Path to a GTF file or a \code{GRanges} object containing gene annotations.}
+\item{gtf_file}{Path to a ensembl GTF file or a \code{GRanges} object containing gene annotations.}
 
 \item{target_gene}{A character vector of one or more target gene names (e.g., from the \code{gene_name}
 attribute in the GTF) to visualize.}
