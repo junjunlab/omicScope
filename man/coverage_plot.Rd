@@ -40,6 +40,7 @@ coverage_plot(
   add_gene_label = TRUE,
   gene_label_size = 1,
   gene_label_aes = "gene_name",
+  gene_label_vjust = 0,
   highlight_region = NULL,
   highlight_col_aes = "seqnames",
   highlight_col = NULL,
@@ -149,6 +150,10 @@ track when using \code{target_region}. Defaults to \code{TRUE}.}
 
 \item{gene_label_aes}{Character. Column name to use from GTF for gene labeling (like "gene_name", "gene_id").
 Defaults to "gene_name".}
+
+\item{gene_label_vjust}{\code{numeric}. Controls the vertical justification of gene labels.
+A value of \code{0} aligns the bottom of the label with its y-coordinate
+(placing it above the transcript line), while \code{0.5} centers it. Defaults to \code{0}.}
 
 \item{highlight_region}{A data frame containing regions to be highlighted
 on the plot. The object must include \code{start} and \code{end} columns. This allows for overlaying
