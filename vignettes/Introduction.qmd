@@ -1,0 +1,24 @@
+# Overview {#sec-intro .unnumbered}
+
+## omicScope
+
+
+## Installation
+
+**omicScope** is now on github. You can install it like this:
+
+```{r, eval=FALSE}
+# install.packages("devtools")
+devtools::install_github("junjunlab/omicScope")
+
+# or
+remotes::install_github("junjunlab/omicScope")
+```
+
+Feel free to leave any suggestions or questions about **omicScope** at the following address: <https://github.com/junjunlab/omicScope/issues>.
+
+## Future plans
+
+We welcome any ideas or suggestions you may have for **omicScope**. Your feedback is invaluable in helping us improve the project. If you are interested in contributing, please feel free to reach out to us directly.
+
+Additionally, we invite you to contribute your code on our GitHub repository for omicScope. Collaborating with the community is key to enhancing the functionality and usability of our tools, and we would love to see your contributions!
