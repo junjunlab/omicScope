@@ -349,6 +349,11 @@ coverage_plot <- function(bam_file = NULL,
                         if(nrow(tmp2.2) > 0){
                             tmp1.1$y_min <- tmp2.2$y_min
                             tmp1.1$y_max <- tmp2.2$y_max
+
+                            tmp1.1 <- tmp1.1 |>
+                                dplyr::mutate(rpm = ifelse(rpm > y_max,y_max,rpm)) |>
+                                dplyr::mutate(rpm = ifelse(rpm < y_min,y_min,rpm))
+
                         }
                         return(tmp1.1)
                     }) %>% do.call("rbind",.) %>%
@@ -358,6 +363,11 @@ coverage_plot <- function(bam_file = NULL,
                 }else{
                     tmp1$y_min <- tmp2$y_min
                     tmp1$y_max <- tmp2$y_max
+
+                    tmp1 <- tmp1 |>
+                        dplyr::mutate(rpm = ifelse(rpm > y_max,y_max,rpm)) |>
+                        dplyr::mutate(rpm = ifelse(rpm < y_min,y_min,rpm))
+
                     return(tmp1)
                 }
             }else{
