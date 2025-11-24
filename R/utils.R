@@ -469,7 +469,7 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
         lapply(seq_along(bam_file),function(x){
             lapply(seq_along(genes),function(g){
                 if(!is.null(target_region)){
-                    fts <- subset(query_region, target_region == genes[g])
+                    fts <- genes[g]
                 }else{
                     fts <- subset(query_region, gene_name == genes[g])
                 }
@@ -483,11 +483,21 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
                 total_reads <- sum(Rsamtools::idxstatsBam(bam_file[x])$mapped)
 
                 # gene region
-                rg <- GenomicRanges::GRanges(
-                    seqnames = GenomicRanges::seqnames(fts)[1],
-                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)) - extend_up,
-                                              end = max(GenomicRanges::end(fts))) + extend_down,
-                    strand = GenomicRanges::strand(fts)[1])
+                if(!is.null(target_region)){
+                    tmp <- sapply(strsplit(fts,split = ":"),"[",2)
+                    rg <- GenomicRanges::GRanges(
+                        seqnames = sapply(strsplit(fts,split = ":"),"[",1),
+                        ranges = IRanges::IRanges(start = as.integer(sapply(strsplit(tmp,split = "\\-"),"[",1)) - extend_up,
+                                                  end = as.integer(sapply(strsplit(tmp,split = "\\-"),"[",2)) + extend_down)
+                    )
+                }else{
+                    rg <- GenomicRanges::GRanges(
+                        seqnames = GenomicRanges::seqnames(fts)[1],
+                        ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)) - extend_up,
+                                                  end = max(GenomicRanges::end(fts))) + extend_down,
+                        strand = GenomicRanges::strand(fts)[1])
+                }
+
 
                 pileup_result <- Rsamtools::pileup(
                     file = Rsamtools::BamFile(bam_file[x]),
@@ -502,6 +512,14 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
                     pileup_result <- data.frame(seqnames = GenomicRanges::seqnames(fts) |> unique(),
                                                 pos = GenomicRanges::start(fts)[1],
                                                 count = 0)
+                }else{
+                    all_positions <- data.frame(
+                        seqnames = as.character(GenomicRanges::seqnames(rg)),
+                        pos = seq(GenomicRanges::start(rg), GenomicRanges::end(rg))
+                    )
+
+                    pileup_result <- dplyr::left_join(all_positions, pileup_result, by = c("seqnames", "pos")) |>
+                        dplyr::mutate(count = tidyr::replace_na(count, 0))
                 }
 
                 pileup_result$sample <- sample_name[x]
@@ -524,18 +542,28 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
         lapply(seq_along(bw_file),function(x){
             lapply(seq_along(genes),function(g){
                 if(!is.null(target_region)){
-                    fts <- subset(query_region, target_region == genes[g])
+                    fts <- genes[g]
                 }else{
                     fts <- subset(query_region, gene_name == genes[g])
                 }
 
 
                 # gene region
-                rg <- GenomicRanges::GRanges(
-                    seqnames = GenomicRanges::seqnames(fts)[1],
-                    ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)),
-                                              end = max(GenomicRanges::end(fts))),
-                    strand = GenomicRanges::strand(fts)[1])
+                if(!is.null(target_region)){
+                    tmp <- sapply(strsplit(fts,split = ":"),"[",2)
+                    rg <- GenomicRanges::GRanges(
+                        seqnames = sapply(strsplit(fts,split = ":"),"[",1),
+                        ranges = IRanges::IRanges(start = as.integer(sapply(strsplit(tmp,split = "\\-"),"[",1)) - extend_up,
+                                                  end = as.integer(sapply(strsplit(tmp,split = "\\-"),"[",2)) + extend_down)
+                    )
+                }else{
+                    rg <- GenomicRanges::GRanges(
+                        seqnames = GenomicRanges::seqnames(fts)[1],
+                        ranges = IRanges::IRanges(start = min(GenomicRanges::start(fts)) - extend_up,
+                                                  end = max(GenomicRanges::end(fts))) + extend_down,
+                        strand = GenomicRanges::strand(fts)[1])
+                }
+
 
                 # load bw file and filter cov region
                 gr <- rtracklayer::import.bw(bw_file[x]) |>
@@ -560,6 +588,14 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
                     pileup_result <- data.frame(seqnames = GenomicRanges::seqnames(fts) |> unique(),
                                                 pos = GenomicRanges::start(fts)[1],
                                                 rpm = 0)
+                }else{
+                    all_positions <- data.frame(
+                        seqnames = as.character(GenomicRanges::seqnames(rg)),
+                        pos = seq(GenomicRanges::start(rg), GenomicRanges::end(rg))
+                    )
+
+                    pileup_result <- dplyr::left_join(all_positions, pileup_result, by = c("seqnames", "pos")) |>
+                        dplyr::mutate(count = tidyr::replace_na(count, 0))
                 }
 
                 pileup_result$sample <- sample_name[x]
@@ -580,4 +616,5 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
 
     return(cov.res)
 }
+
 

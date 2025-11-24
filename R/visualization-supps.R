@@ -279,7 +279,7 @@ coverage_plot <- function(bam_file = NULL,
         ylb <- "Normalized reads coverage"
     }
 
-
+    # cov.res |> group_by(target_region) |> summarise(xmin = min(pos),xmax = max(pos))
 
     # check prefix for seqname
     bm <- startsWith(as.character(cov.res$seqnames[1]),"chr")
@@ -328,6 +328,7 @@ coverage_plot <- function(bam_file = NULL,
         }
 
         # modify range
+        x = 1
         lapply(seq_along(gs),function(x){
             if(!is.null(target_gene)){
                 tmp1 <- subset(cov.res, gene_name == gs[x])
@@ -353,7 +354,6 @@ coverage_plot <- function(bam_file = NULL,
                             tmp1.1 <- tmp1.1 |>
                                 dplyr::mutate(rpm = ifelse(rpm > y_max,y_max,rpm)) |>
                                 dplyr::mutate(rpm = ifelse(rpm < y_min,y_min,rpm))
-
                         }
                         return(tmp1.1)
                     }) %>% do.call("rbind",.) %>%
@@ -441,7 +441,7 @@ coverage_plot <- function(bam_file = NULL,
 
         # add arrow direction
         tid <- tid |>
-            left_join(y = strc.info,by = c("gene_name","transcript_id")) |>
+            dplyr::left_join(y = strc.info,by = c("gene_name","transcript_id")) |>
             dplyr::mutate(sample = "Gene structure",group = "Gene structure") |>
             dplyr::mutate(x = ifelse(strand == "+", start, end),
                           xend = ifelse(strand == "+", end, start))
@@ -734,7 +734,6 @@ coverage_plot <- function(bam_file = NULL,
         geom_blank(aes(ymin = y_min,ymax = y_max)) +
         scale_y_continuous(expand = expansion(mult = c(0, 0.05)),
                            position = "right") +
-        scale_x_continuous(labels = function(x) x/1000) +
         theme_bw() +
         theme(panel.grid = element_blank(),
               strip.text.x = element_text(face = "bold.italic"),
@@ -758,6 +757,12 @@ coverage_plot <- function(bam_file = NULL,
         p <- p +
             theme(axis.text.y = element_blank(),
                   axis.ticks.y = element_blank())
+    }
+
+    if(!is.null(target_region)){
+        p <- p + scale_x_continuous(labels = function(x) x/1000, expand = c(0, 0))
+    }else{
+        p <- p + scale_x_continuous(labels = function(x) x/1000)
     }
 
     return(p)
