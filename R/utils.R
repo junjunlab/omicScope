@@ -595,7 +595,7 @@ get_cov <- function(bam_file = NULL, bw_file = NULL,
                     )
 
                     pileup_result <- dplyr::left_join(all_positions, pileup_result, by = c("seqnames", "pos")) |>
-                        dplyr::mutate(count = tidyr::replace_na(count, 0))
+                        dplyr::mutate(count = tidyr::replace_na(rpm, 0))
                 }
 
                 pileup_result$sample <- sample_name[x]
