@@ -82,11 +82,13 @@ setMethod("dim_plot",
                                     check.names = FALSE,
                                     stringsAsFactors = T)
 
-              if(coldata$sample[1] == coldata$sample_name[1]){
-                  iby <- "sample"
-              }else{
-                  iby <- c("sample_name" = "sample")
-              }
+              # if(coldata$sample[1] == coldata$sample_name[1]){
+              #     iby <- "sample"
+              # }else{
+              #     iby <- c("sample_name" = "sample")
+              # }
+
+              iby <- "sample"
 
               # do reduction
               if(reduction == "pca"){
